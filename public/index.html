@@ -15,6 +15,7 @@
     canvas {
       height: 100%;
       width: 100%;
+      image-rendering: crisp-edges;
     }
   </style>
 </head>
@@ -22,6 +23,10 @@
   <canvas id="game"></canvas>
 
   <!-- canvas needs to load before js should run -->
-  <script src="./build/index.js"></script>
+  <script src="./socket.io.js">
+    // Necessary in order to import io() into index.ts
+    window.io = io;
+  </script>
+  <script type="module" src="../build/index.js"></script>
 </body>
 </html> 

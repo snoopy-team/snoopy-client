@@ -8,6 +8,9 @@
   "scripts": {
     "build": "npx tsc",
     "watch": "npx tsc -w",
-    "test": "jest"
+    "test": "jest --maxWorkers=1"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.0.0"
   }
 }
