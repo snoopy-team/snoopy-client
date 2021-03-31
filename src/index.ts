@@ -1,3 +1,4 @@
+import { Socket } from 'socket.io-client';
 import { GameWorld } from './GameWorld.js';
 import { ServerMock, ServerUpdateManager } from './ServerUtils.js';
 
@@ -18,7 +19,7 @@ export const constants = {
 }
 
 // Connect to remote socket for AI and multiplayer functionality
-const socket = (window as any).io(constants.SERVER_SOCKET_URL);
+const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
 socket.on('connection', (socket: any) => {
   console.log('Server connected successfully');
 
