@@ -12,6 +12,7 @@ export class GameWorld {
   private players: { [id: string]: Agent; };
   private bullets: { [id: string]: Bullet };
   private serverUpdateManager: ServerUpdateManager;
+  private drawBackground: (ctx: CanvasRenderingContext2D) => void;
 
   /**
    * Constructs a GameWorld from information that is available via a server update packet.
@@ -20,10 +21,12 @@ export class GameWorld {
    * @param updateManager the manager for the server we're listening to that will provide us with
    * updates to our game objects
    */
-  constructor(updateManager: ServerUpdateManager) {
+  constructor(updateManager: ServerUpdateManager, 
+    drawBackground: (ctx: CanvasRenderingContext2D) => void) {
     this.players = {};
     this.bullets = {};
     this.serverUpdateManager = updateManager;
+    this.drawBackground = drawBackground;
   }
 
   /**
@@ -34,13 +37,12 @@ export class GameWorld {
     this.serverUpdateManager.beginRequestingUpdates();
 
     const millisPerFrame = 1000 / constants.FPS;
-    setInterval(() => { 
+    setInterval(() => {
       // Clear screen before next draw
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Render background
-      ctx.fillStyle = constants.BACKGROUND_COLOR;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      this.drawBackground(ctx);
 
       // apply all updates, if any, to the players and bullets
       if (this.serverUpdateManager.hasUpdate()) {

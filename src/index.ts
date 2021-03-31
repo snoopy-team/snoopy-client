@@ -1,6 +1,8 @@
 import { Socket } from 'socket.io-client';
 import { GameWorld } from './GameWorld.js';
+import { GridBackground } from './GridBackground.js';
 import { ServerMock, ServerUpdateManager } from './ServerUtils.js';
+import { origin } from './VectorMath.js';
 
 export const canvas: HTMLCanvasElement = document.getElementById('game') as HTMLCanvasElement;
 canvas.width = window.innerWidth;
@@ -23,6 +25,11 @@ const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
 socket.on('connection', (socket: any) => {
   console.log('Server connected successfully');
 
+  // TODO
+  socket.on('some message title sent from the server', () => {
+    // Do something with a new Server implementation that 
+  });
+
   socket.on('disconnect', () => {
     console.log('Server disconnected');
   });
@@ -31,8 +38,19 @@ socket.on('connection', (socket: any) => {
 // Create update manager to serve as the in-between of the server and our game
 const serverUpdateManager: ServerUpdateManager = new ServerUpdateManager(new ServerMock());
 
+// Define some visual backgrounds for our game
+const drawBlankBG = (ctx: CanvasRenderingContext2D) => {
+  ctx.fillStyle = constants.BACKGROUND_COLOR;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+const drawGridBG = (ctx: CanvasRenderingContext2D) => {
+  const grid: GridBackground = new GridBackground();
+  grid.draw(ctx, { x: 25, y: 25 }, {x: canvas.width, y: canvas.height}, { x: 50, y: 50 });
+}
+
 // Create world with update manager and begin game
-let world: GameWorld = new GameWorld(serverUpdateManager);
+let world: GameWorld = new GameWorld(serverUpdateManager, drawGridBG);
 world.gameLoop();
 
 // At any given time, which keys are down?

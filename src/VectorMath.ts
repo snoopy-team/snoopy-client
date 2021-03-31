@@ -37,3 +37,13 @@ export const multiplyVectors = (v1: Vec2, v2: Vec2): Vec2 => {
     y: v1.y * v2.y
   }
 }
+
+/**
+ * Given two vectors, returns v1 % v2
+ */
+ export const modVectors = (v1: Vec2, v2: Vec2): Vec2 => {
+  return {
+    x: v1.x % v2.x,
+    y: v1.y % v2.y
+  }
+}
