@@ -1,3 +1,5 @@
+import { Socket } from "socket.io-client";
+import { constants } from "./index.js";
 import { Agent, AgentState } from "./Agents";
 import { BulletState } from "./Bullet";
 
@@ -81,7 +83,7 @@ export class ServerUpdateManager {
 /**
  * A class that will help us visually test our code by mocking input from the server.
  */
-export class ServerMock {
+export class ServerMock implements Server {
   // Functions that will run when this server encounters new updates.
   private updateObservers: Array<(update: ServerUpdate) => void>;
 
@@ -161,5 +163,57 @@ export class ServerMock {
         i++;
       }
     }, 1000);
+  }
+}
+
+/**
+ * A message receiver for the live server.
+ */
+export class LiveServer implements Server {
+  private updateObservers: Array<(update: ServerUpdate) => void>;
+  private keysDown: Array<string>;
+
+  constructor() {
+    this.updateObservers = [];
+    this.keysDown = [];
+  }
+
+  addUpdateListener = (listener: (update: ServerUpdate) => void): void => {
+    this.updateObservers.push(listener);
+  };
+
+  startProvidingUpdates = (): void => {
+    // Connect to remote socket for AI and multiplayer functionality
+    const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
+    socket.on('connection', (socket: Socket) => {
+      console.log('Server connected successfully');
+
+      // Keep track of which keys are down at any point in time and emit a message to server when
+      // keys are pressed
+      document.addEventListener('keydown', (e) => {
+        this.keysDown.push(e.key.toLowerCase());
+        socket.emit(JSON.stringify(this.keysDown));
+      });
+      document.addEventListener('keyup', (e) => {
+        this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
+        socket.emit(JSON.stringify(this.keysDown));
+      });
+
+      // TODO
+      socket.on('some message title sent from the server', (data) => {
+        // this is where I take `data` and broadcast an update
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Server disconnected');
+      });
+    });
+  }
+
+  /**
+   * Provide the given update to all observers to this server
+   */
+   broadcastUpdate = (update: ServerUpdate) => {
+    this.updateObservers.forEach(updateObserver => updateObserver(update));
   }
 }
