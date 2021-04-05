@@ -10,7 +10,7 @@ canvas.height = window.innerHeight;
 export const ctx: CanvasRenderingContext2D = canvas.getContext('2d') as CanvasRenderingContext2D;
 
 export const constants = {
-  FPS: 10,
+  FPS: 30,
   // Most likely this will change to something a bit more fun (like a blue sky with clouds)
   BACKGROUND_COLOR: 'white',
   // Whether or not debugger info should be displayed
@@ -33,5 +33,5 @@ const drawGridBG = (ctx: CanvasRenderingContext2D) => {
 }
 
 // Create world with update manager and begin game
-let world: GameWorld = new GameWorld(serverUpdateManager, drawGridBG);
+let world: GameWorld = new GameWorld(serverUpdateManager, drawBlankBG);
 world.gameLoop();

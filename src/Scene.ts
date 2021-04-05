@@ -1,12 +1,13 @@
-import { canvas } from './index.js';
-import { Vec2 } from './VectorMath.js';
+import { Background } from './GridBackground.js';
+import { canvas, ctx } from './index.js';
+import { multiplyVectors, origin, subractVectors, Vec2 } from './VectorMath.js';
 
 // TODO
 export type SceneObject = {
-  // TODO
+  // Returns the world position of this SceneObject (as opposed to screen coordinates)
   getPosition: () => Vec2;
-  // TODO
-  drawSprite(x: number, y: number): void;
+  // Draws the sprite given a screen coordinate (where (0,0) is the top left corner of the screen)
+  drawSprite(pos: Vec2): void;
 }
 
 /**
@@ -20,7 +21,7 @@ export type SceneObject = {
  * defined line of motion (i.e. for a cut scene), or even following a position controlled by arrow
  * keys (i.e. for a debug camera)
  */
- class Camera {
+ export class Camera {
   // The position this camera is looking at
   private position: Vec2;
   // The radius for both the x and y axis. This will determine what the camera can see. We can zoom
@@ -29,6 +30,7 @@ export type SceneObject = {
   // This default will be changed when centerOn method is called
   private destinationPosition: () => Vec2 = () => this.position;
   private scene: Array<SceneObject>;
+  private background: Background;
 
   /**
    * Constructs a new Camera, given information about what to follow
@@ -36,11 +38,11 @@ export type SceneObject = {
    * For instance, you might want a Camera to focus on the (x,y) coords of an Agent. Or, you might
    * want a free Camera that moves around with your arrow keys.
    */
-  constructor(positionToCenter: () => Vec2, 
-    scene: Array<SceneObject>, ctx: CanvasRenderingContext2D) {
+  constructor(positionToCenter: () => Vec2, scene: Array<SceneObject>, background: Background) {
     this.destinationPosition = positionToCenter;
     this.position = this.destinationPosition();
     this.scene = scene;
+    this.background = background;
 
     // TODO: should this be left arbitrarily defined?
     this.axesRadii = {x: canvas.width / 2, y: canvas.height / 2};
@@ -69,28 +71,29 @@ export type SceneObject = {
   // The current approach is to linearly check if each object should be on the screen. However, a
   // future implemention of scene may allow us to simply get all coordinates in an area.
   renderAll = () => {
+    // Draw background
+    let worldBounds = this.computeWorldBounds();
+    let gridSquareSize = 25;
+    let gridSquareVec = { x: gridSquareSize, y: gridSquareSize };
+    this.background.draw(ctx, worldBounds.topLeft, worldBounds.bottomRight, gridSquareVec);
+    
+    // Draw all objects
     for (let object of this.scene) {
       let objPos = object.getPosition();
+
       if (this.coordWithinBounds(objPos)) {
         let objectScreenCoords = this.worldToScreenCoords(objPos);
-        object.drawSprite(objectScreenCoords.x, objectScreenCoords.y);
+        object.drawSprite(objectScreenCoords);
       }
     }
   }
 
   // TODO
   private worldToScreenCoords(coord: Vec2): Vec2 {
-    // Compute bounds
     let topLeft = this.computeWorldBounds().topLeft;
-
-    // Get the world distance between the top camera boundary and y=0
-    let yDistToZero = topLeft.y;
-    // Get the world distance between the left camera boundary and x=0
-    let xDistToZero = topLeft.x;
-
     return {
-      x: coord.x - xDistToZero,
-      y: coord.y - yDistToZero
+      x: coord.x - topLeft.x,
+      y: coord.y - topLeft.y
     }
   }
 

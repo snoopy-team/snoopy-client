@@ -2,6 +2,9 @@ import { canvas, ctx, constants } from './index.js';
 import { Agent, AgentState } from './Agents.js';
 import { Bullet } from './Bullet.js';
 import { Server, ServerMock, ServerUpdate, ServerUpdateManager } from './ServerUtils.js';
+import { Camera, SceneObject } from './Scene.js';
+import { GridBackground } from './GridBackground.js';
+import { origin } from './VectorMath.js';
 
 /**
  * Holds the main game loop for this dogfighting game. Holds the state and behavior necessary to
@@ -13,6 +16,13 @@ export class GameWorld {
   private bullets: { [id: string]: Bullet };
   private serverUpdateManager: ServerUpdateManager;
   private drawBackground: (ctx: CanvasRenderingContext2D) => void;
+  private isRequestingUpdates: boolean;
+  // Used in gameLoop to keep track of the time that our last loop was run
+  private before: number;
+  private millisPassedSinceLastFrame: number;
+  // Provides our Camera with objects to draw
+  private scene: Array<SceneObject>;
+  private camera: Camera;
 
   /**
    * Constructs a GameWorld from information that is available via a server update packet.
@@ -27,6 +37,11 @@ export class GameWorld {
     this.bullets = {};
     this.serverUpdateManager = updateManager;
     this.drawBackground = drawBackground;
+    this.isRequestingUpdates = false;
+    this.before = Date.now();
+    this.millisPassedSinceLastFrame = 0;
+    this.scene = [];
+    this.camera = new Camera(() => origin, this.scene, new GridBackground());
   }
 
   /**
@@ -34,10 +49,17 @@ export class GameWorld {
    * the screen.
    */
   gameLoop = (): void => {
-    this.serverUpdateManager.beginRequestingUpdates();
+    // Only request continual updates once, on the first call of the gameLoop
+    if (!this.isRequestingUpdates) { 
+      this.serverUpdateManager.beginRequestingUpdates();
+      this.isRequestingUpdates = true;
+    }
 
+    let now = Date.now();
+    this.millisPassedSinceLastFrame += now - this.before;
     const millisPerFrame = 1000 / constants.FPS;
-    setInterval(() => {
+    
+    if (this.millisPassedSinceLastFrame >= millisPerFrame) {
       // Clear screen before next draw
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -54,7 +76,10 @@ export class GameWorld {
           // Check if player is new
           let playerIsNew = !this.players.hasOwnProperty(state.id);
           if (playerIsNew) {
-            this.players[state.id] = new Agent(state)
+            let agent = new Agent(state);
+            this.players[state.id] = agent;
+            this.scene.push(agent);
+            this.camera.centerOn(agent.getPosition)
           }
 
           this.players[state.id].getServerUpdate(state);
@@ -65,7 +90,9 @@ export class GameWorld {
           // Check if bullet is new
           let bulletIsNew = !this.bullets.hasOwnProperty(state.id);
           if (bulletIsNew) {
-            this.bullets[state.id] = new Bullet(state.position, state.velocity);
+            let bullet = new Bullet(state.position, state.velocity);
+            this.bullets[state.id] = bullet;
+            this.scene.push(bullet);
           }
 
           this.bullets[state.id].getServerUpdate(state);
@@ -76,17 +103,19 @@ export class GameWorld {
       for (let playerID of Object.keys(this.players)) {
         let secPerFrame = millisPerFrame / 1000;
         let player = this.players[playerID];
-        player.update(secPerFrame);
-        player.drawSprite()
+        player.update(this.millisPassedSinceLastFrame / 1000);
       }
-
+      
       // Update bullets
       for (let bulletID of Object.keys(this.bullets)) {
         let secPerFrame = millisPerFrame / 1000;
         let bullet = this.bullets[bulletID];
-        bullet.update(secPerFrame);
-        bullet.drawSprite()
+        bullet.update(this.millisPassedSinceLastFrame / 1000);
       }
+
+      // Draw all game objects
+      this.camera.update();
+      this.camera.renderAll();
 
       // Add debug info to the top left
       if (constants.DEBUG_MODE) {
@@ -99,7 +128,12 @@ export class GameWorld {
           index++;
         }
       }
-    }, millisPerFrame);
+
+      this.millisPassedSinceLastFrame = 0;
+    }
+
+    this.before = now;
+    requestAnimationFrame(this.gameLoop);
   }
 
   /**
@@ -109,6 +143,7 @@ export class GameWorld {
    */
   addPlayer = (player: Agent, id: string): void => {
     this.players[id] = player;
+    this.scene.push(player);
   }
 
   /**
@@ -118,5 +153,6 @@ export class GameWorld {
    */
   addBullet = (bullet: Bullet, id: string): void => {
     this.bullets[id] = bullet;
+    this.scene.push(bullet);
   }
 }

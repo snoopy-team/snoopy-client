@@ -34,10 +34,10 @@ export class Bullet implements SceneObject {
   /**
    * Draws the sprite of this bullet
    */
-  drawSprite = (): void => {
+  drawSprite = (pos: Vec2): void => {
     ctx.fillStyle = 'black';
     ctx.beginPath();
-    ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+    ctx.arc(pos.x, pos.y, this.radius, 0, Math.PI * 2);
     ctx.fill()
   }
 

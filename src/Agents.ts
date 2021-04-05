@@ -1,4 +1,5 @@
 import { ctx } from './index.js';
+import { SceneObject } from './Scene.js';
 import { Vec2, addVectors, subractVectors, multiplyVectors } from './VectorMath.js';
 
 /**
@@ -16,7 +17,7 @@ export type AgentState = {
 /**
  * Represents an agent, either AI controlled or player controlled.
  */
-export class Agent {
+export class Agent implements SceneObject {
   // ------- Where I am currently -------
   private orientation = 0; // In radians
   private position: Vec2;
@@ -53,17 +54,18 @@ export class Agent {
    * Draw sprite on the canvas, where its center is at this.position. Currently the sprite is a
    * simple black rectangle.
    */
-  drawSprite = (): void => {
+  drawSprite = (location: Vec2): void => {
     let width = 100;
     let height = 50;
     // Where we want our rect to be drawn
     let centeredPos = {
-      x: this.position.x - width / 2,
-      y: this.position.y - height / 2
+      x: location.x - width / 2,
+      y: location.y - height / 2
     }
 
     this.rotateThenDraw(
-      this.orientation, 
+      location,
+      this.orientation,
       centeredPos,
       (pos: Vec2) => {
         ctx.fillStyle = "black";
@@ -73,7 +75,7 @@ export class Agent {
   }
 
   /**
-   * Returns the position of this Agent
+   * Returns the world position of this Agent (as opposed to screen coordinates)
    */
   getPosition = (): Vec2 => this.position;
 
@@ -91,17 +93,18 @@ export class Agent {
    * @param deltaTime the amount of time, in seconds, that has changed since the last update
    */
   update = (deltaTime: number): void => {
-    // Find the difference between our velocity and acceleration vectors
-    let velocityDiff = subractVectors(this.destinationVelocity, this.velocity);
-    let accelerationDiff = subractVectors(this.destinationAcceleration, this.acceleration);
-    let orientationDiff = this.destinationOrientation - this.orientation;
+    console.log(this.velocity, this.acceleration)
+    // // Find the difference between our velocity and acceleration vectors
+    // let velocityDiff = subractVectors(this.destinationVelocity, this.velocity);
+    // let accelerationDiff = subractVectors(this.destinationAcceleration, this.acceleration);
+    // let orientationDiff = this.destinationOrientation - this.orientation;
     
-    // percentage to reduce the difference by on both axes
-    let reduceAmt = 0.1;
-    let reduceVec = { x: reduceAmt, y: reduceAmt };
-    this.velocity = addVectors(this.velocity, multiplyVectors(reduceVec, velocityDiff));
-    this.acceleration = addVectors(this.acceleration, multiplyVectors(reduceVec, accelerationDiff));
-    this.orientation += orientationDiff * reduceAmt;
+    // // percentage to reduce the difference by on both axes
+    // let reduceAmt = 0.1;
+    // let reduceVec = { x: reduceAmt, y: reduceAmt };
+    // this.velocity = addVectors(this.velocity, multiplyVectors(reduceVec, velocityDiff));
+    // this.acceleration = addVectors(this.acceleration, multiplyVectors(reduceVec, accelerationDiff));
+    // this.orientation += orientationDiff * reduceAmt;
 
     // Change our position according to our updated velocity and acceleration. Multiplying by
     // deltaTime makes sure we don't increase by the full velocity/acceleration every call to update
@@ -138,7 +141,7 @@ export class Agent {
   }
   
   // Rotates canvas, runs the given draw function, then resets angle of canvas
-  private rotateThenDraw = (radians: number, centeredPos: Vec2, draw: (pos: Vec2) => void): void => {
+  private rotateThenDraw = (pos: Vec2, radians: number, centeredPos: Vec2, draw: (pos: Vec2) => void): void => {
     // rotate() rotates the entire drawing context, and rotates about the origin. To fix this, we
     // first translate to the center of our object to draw, then rotate, then draw, then reset our
     // translation
@@ -147,7 +150,7 @@ export class Agent {
 
     // Draw at a corrected position. The origin is now centered where we want our centered rectangle
     // to be, so we need to draw at the centered location with our current position subtracted out.
-    draw(subractVectors(centeredPos, this.position));
+    draw(subractVectors(centeredPos, pos));
 
     ctx.rotate(-radians);
     ctx.translate(-centeredPos.x, -centeredPos.y);
