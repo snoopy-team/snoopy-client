@@ -1,6 +1,6 @@
 import { Background } from './GridBackground.js';
 import { canvas, ctx } from './index.js';
-import { multiplyVectors, origin, subractVectors, Vec2 } from './VectorMath.js';
+import { addVectors, multiplyVectors, origin, subractVectors, Vec2 } from './VectorMath.js';
 
 // TODO
 export type SceneObject = {
@@ -31,6 +31,9 @@ export type SceneObject = {
   private destinationPosition: () => Vec2 = () => this.position;
   private scene: Array<SceneObject>;
   private background: Background;
+  private FOLLOW_DISTANCE = 50;
+  // Percentage of gap between curr position & dest position to close each update. See this.update
+  private lerpFactor = 0.1;
 
   /**
    * Constructs a new Camera, given information about what to follow
@@ -63,8 +66,28 @@ export type SceneObject = {
    * implement smooth camera following via lerping and other types of cameras such as a free control
    * camera.
    */
+  /**
+   * Smoothly interpolate toward destination until camera is FOLLOW_DISTANCE from destination, then 
+   * clamp to FOLLOW_DISTANCE away from destination.
+   */
   update = () => {
-    this.position = this.destinationPosition();
+    let destPos = this.destinationPosition();
+    let diff = subractVectors(destPos, this.position);
+    let newPos = { x: 0, y: 0 };
+
+    if (diff.x <= this.FOLLOW_DISTANCE) {
+      newPos.x = this.position.x + diff.x * this.lerpFactor
+    } else {
+      newPos.x = destPos.x - Math.sign(diff.x) * this.FOLLOW_DISTANCE;
+    }
+
+    if (diff.y <= this.FOLLOW_DISTANCE) {
+      newPos.y = this.position.y + diff.y * this.lerpFactor
+    } else {
+      newPos.y = destPos.y - Math.sign(diff.y) * this.FOLLOW_DISTANCE;
+    }
+
+    this.position = newPos;
   }
 
   // TODO
@@ -73,7 +96,7 @@ export type SceneObject = {
   renderAll = () => {
     // Draw background
     let worldBounds = this.computeWorldBounds();
-    let gridSquareSize = 25;
+    let gridSquareSize = 100;
     let gridSquareVec = { x: gridSquareSize, y: gridSquareSize };
     this.background.draw(ctx, worldBounds.topLeft, worldBounds.bottomRight, gridSquareVec);
     

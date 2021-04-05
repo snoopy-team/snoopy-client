@@ -93,7 +93,7 @@ export class Agent implements SceneObject {
    * @param deltaTime the amount of time, in seconds, that has changed since the last update
    */
   update = (deltaTime: number): void => {
-    console.log(this.velocity, this.acceleration)
+    console.log(this.velocity, this.position)
     // // Find the difference between our velocity and acceleration vectors
     // let velocityDiff = subractVectors(this.destinationVelocity, this.velocity);
     // let accelerationDiff = subractVectors(this.destinationAcceleration, this.acceleration);
@@ -126,18 +126,20 @@ export class Agent implements SceneObject {
    */
   getServerUpdate = (newState: AgentState): void => {
     // Set all current attributes to the destination attributes
-    this.position = this.destinationPosition;
-    this.velocity = this.destinationVelocity;
-    this.acceleration = this.destinationAcceleration;
-    this.orientation = this.destinationOrientation;
-    this.cooldown = this.destinationCooldown;
+    this.position = newState.position;
+    this.velocity = newState.velocity;
+    this.acceleration = newState.acceleration;
+    this.orientation = newState.orientation;
+    this.cooldown = newState.cooldown;
 
     // Set the destination to the new state
-    this.destinationPosition = newState.position;
-    this.destinationVelocity = newState.velocity;
-    this.destinationAcceleration = newState.acceleration;
-    this.destinationOrientation = newState.orientation;
-    this.destinationCooldown = newState.cooldown;
+    // TODO: decide whether to uncomment this or not... depends on how we decide to deal with server
+    // updates.
+    // this.destinationPosition = newState.position;
+    // this.destinationVelocity = newState.velocity;
+    // this.destinationAcceleration = newState.acceleration;
+    // this.destinationOrientation = newState.orientation;
+    // this.destinationCooldown = newState.cooldown;
   }
   
   // Rotates canvas, runs the given draw function, then resets angle of canvas

@@ -116,6 +116,36 @@ export class ServerMock implements Server {
    * Provides some manually defined updates to the server manager at a rate of one second.
    */
   oneSecIntervalUpdates = (): void => {
+    let flag = true;
+
+    let sineMotion = (toggleFlag: boolean) => {
+      if (toggleFlag) {
+        return {
+          players: [{
+            id: 'example player id',
+            position: { x: 0, y: 0 },
+            velocity: { x: 300, y: 300 },
+            acceleration: { x: 0, y: 0 },
+            orientation: 0,
+            cooldown: 0,
+          }],
+          bullets: []
+        }
+      } else {
+        return {
+          players: [{
+            id: 'example player id',
+            position: { x: 300, y: 300 },
+            velocity: { x: -300, y: -300 },
+            acceleration: { x: 0, y: 0 },
+            orientation: 0,
+            cooldown: 0,
+          }],
+          bullets: []
+        }
+      }
+    }
+
     let mockData: Array<ServerUpdate> = [
       {
         players: [{
@@ -156,12 +186,14 @@ export class ServerMock implements Server {
       // },
     ];
 
-    let i = 0;
+    // let i = 0;
     setInterval(() => {
-      if (i < mockData.length) {
-        this.broadcastUpdate(mockData[i])
-        i++;
-      }
+      this.broadcastUpdate(sineMotion(flag));
+      flag = !flag;
+      // if (i < mockData.length) {
+      //   this.broadcastUpdate(mockData[i])
+      //   i++;
+      // }
     }, 1000);
   }
 }
