@@ -124,7 +124,7 @@ export type SceneObject = {
     }
   }
 
-  // TODO HMMM somehow I have to scale these coordinates
+  // TODO 
   private worldToScreenCoords(coord: Vec2): Vec2 {
     return {
       x: canvas.width / 2 + this.scale * (coord.x - this.position.x),
@@ -137,12 +137,12 @@ export type SceneObject = {
   private computeWorldBounds = (): { topLeft: Vec2, bottomRight: Vec2 } => {
     // Compute bounds
     let topLeft = {
-      x: this.position.x - this.axesRadii.x,
-      y: this.position.y - this.axesRadii.y
+      x: this.position.x - this.axesRadii.x / this.scale,
+      y: this.position.y - this.axesRadii.y / this.scale
     };
     let bottomRight = {
-      x: this.position.x + this.axesRadii.x,
-      y: this.position.y + this.axesRadii.y
+      x: this.position.x + this.axesRadii.x / this.scale,
+      y: this.position.y + this.axesRadii.y / this.scale
     };
 
     return { topLeft, bottomRight }
@@ -184,7 +184,7 @@ export class DebugCamera extends Camera {
     document.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
       this.scale += e.deltaY * -0.01;
-      
+
       // Restrict scale from [.125, 3]
       this.scale = Math.min(Math.max(.125, this.scale), 3);
     }, { passive: false });
