@@ -2,7 +2,7 @@ import { canvas, ctx, constants } from './index.js';
 import { Agent, AgentState } from './Agents.js';
 import { Bullet } from './Bullet.js';
 import { Server, ServerMock, ServerUpdate, ServerUpdateManager } from './ServerUtils.js';
-import { Camera, SceneObject } from './Scene.js';
+import { Camera, DebugCamera, SceneObject } from './Scene.js';
 import { GridBackground } from './GridBackground.js';
 import { origin } from './VectorMath.js';
 
@@ -15,7 +15,6 @@ export class GameWorld {
   private players: { [id: string]: Agent; };
   private bullets: { [id: string]: Bullet };
   private serverUpdateManager: ServerUpdateManager;
-  private drawBackground: (ctx: CanvasRenderingContext2D) => void;
   private isRequestingUpdates: boolean;
   // Used in gameLoop to keep track of the time that our last loop was run
   private before: number;
@@ -31,17 +30,16 @@ export class GameWorld {
    * @param updateManager the manager for the server we're listening to that will provide us with
    * updates to our game objects
    */
-  constructor(updateManager: ServerUpdateManager, 
-    drawBackground: (ctx: CanvasRenderingContext2D) => void) {
+  constructor(updateManager: ServerUpdateManager) {
     this.players = {};
     this.bullets = {};
     this.serverUpdateManager = updateManager;
-    this.drawBackground = drawBackground;
     this.isRequestingUpdates = false;
     this.before = Date.now();
     this.millisPassedSinceLastFrame = 0;
     this.scene = [];
     this.camera = new Camera(() => origin, this.scene, new GridBackground());
+    this.camera = new DebugCamera(this.scene, new GridBackground());
   }
 
   /**
@@ -62,9 +60,6 @@ export class GameWorld {
     if (this.millisPassedSinceLastFrame >= millisPerFrame) {
       // Clear screen before next draw
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Render background
-      this.drawBackground(ctx);
 
       // apply all updates, if any, to the players and bullets
       if (this.serverUpdateManager.hasUpdate()) {

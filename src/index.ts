@@ -21,17 +21,6 @@ export const constants = {
 // Create update manager to serve as the in-between of the server and our game
 const serverUpdateManager: ServerUpdateManager = new ServerUpdateManager(new ServerMock());
 
-// Define some visual backgrounds for our game
-const drawBlankBG = (ctx: CanvasRenderingContext2D) => {
-  ctx.fillStyle = constants.BACKGROUND_COLOR;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-const drawGridBG = (ctx: CanvasRenderingContext2D) => {
-  const grid: GridBackground = new GridBackground();
-  grid.draw(ctx, { x: 25, y: 25 }, {x: canvas.width, y: canvas.height}, { x: 50, y: 50 });
-}
-
 // Create world with update manager and begin game
-let world: GameWorld = new GameWorld(serverUpdateManager, drawBlankBG);
+let world: GameWorld = new GameWorld(serverUpdateManager);
 world.gameLoop();

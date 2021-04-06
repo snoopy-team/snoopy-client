@@ -28,7 +28,7 @@ export type SceneObject = {
  */
  export class Camera {
   // The position this camera is looking at
-  private position: Vec2;
+  protected position: Vec2;
   // The radius for both the x and y axis. This will determine what the camera can see. We can zoom
   // in or zoom out by multiplying these by some constant.
   private axesRadii: Vec2;
@@ -41,7 +41,7 @@ export type SceneObject = {
   private lerpFactor = 0.1;
   // A scale of 1 means pixels match perfectly to their on-screen size. A scale of 2 means doubling
   // the on-screen size of objects, and a scale of 0.5 means halving the size.
-  private scale: number;
+  protected scale: number;
 
   /**
    * Constructs a new Camera, given information about what to follow
@@ -78,30 +78,34 @@ export type SceneObject = {
    * Smoothly interpolate toward destination until camera is FOLLOW_DISTANCE from destination, then 
    * clamp to FOLLOW_DISTANCE away from destination.
    */
-  update = () => {
+  update = (): void => {
     let destPos = this.destinationPosition();
     let diff = subractVectors(destPos, this.position);
-    let newPos = { x: 0, y: 0 };
 
-    if (diff.x <= this.FOLLOW_DISTANCE) {
-      newPos.x = this.position.x + diff.x * this.lerpFactor
-    } else {
-      newPos.x = destPos.x - Math.sign(diff.x) * this.FOLLOW_DISTANCE;
+    // Only update position if the difference between current and destination is greater than 1
+    if (Math.abs(diff.x) > 1 || Math.abs(diff.y) > 1) {
+      let newPos = { x: 0, y: 0 };
+
+      if (diff.x <= this.FOLLOW_DISTANCE) {
+        newPos.x = this.position.x + diff.x * this.lerpFactor
+      } else {
+        newPos.x = destPos.x - Math.sign(diff.x) * this.FOLLOW_DISTANCE;
+      }
+
+      if (diff.y <= this.FOLLOW_DISTANCE) {
+        newPos.y = this.position.y + diff.y * this.lerpFactor
+      } else {
+        newPos.y = destPos.y - Math.sign(diff.y) * this.FOLLOW_DISTANCE;
+      }
+
+      this.position = newPos;
     }
-
-    if (diff.y <= this.FOLLOW_DISTANCE) {
-      newPos.y = this.position.y + diff.y * this.lerpFactor
-    } else {
-      newPos.y = destPos.y - Math.sign(diff.y) * this.FOLLOW_DISTANCE;
-    }
-
-    this.position = destPos;
   }
 
   // TODO
   // The current approach is to linearly check if each object should be on the screen. However, a
   // future implemention of scene may allow us to simply get all coordinates in an area.
-  renderAll = () => {
+  renderAll = (): void => {
     // Draw background
     let worldBounds = this.computeWorldBounds();
     let gridSquareSize = 100;
@@ -130,7 +134,7 @@ export type SceneObject = {
 
   // Returns the top left and bottom right coordinates that this camera can see in World
   // Coordinates.
-  private computeWorldBounds = () => {
+  private computeWorldBounds = (): { topLeft: Vec2, bottomRight: Vec2 } => {
     // Compute bounds
     let topLeft = {
       x: this.position.x - this.axesRadii.x,
@@ -153,5 +157,53 @@ export type SceneObject = {
 
     return coord.x >= topLeft.x && coord.y >= topLeft.y 
         && coord.x <= bottomRight.x && coord.y <= bottomRight.y;
+  }
+}
+
+/**
+ * Same as normal camera, except follows arrow key controls instead of focusing on a player
+ */
+export class DebugCamera extends Camera {
+  // Holds values from an event.key from a vanilla keyboard event listener
+  private keysDown: Array<string>;
+
+  constructor(scene: Array<SceneObject>, background: Background, scale: number = 1) {
+    super(() => origin, scene, background, scale);
+
+    this.keysDown = [];
+
+    let l = document.addEventListener('keydown', (e: KeyboardEvent) => {
+      this.keysDown.push(e.key);
+    });
+
+    document.addEventListener('keyup', (e: KeyboardEvent) => {
+      this.keysDown = this.keysDown.filter((key: string) => key != e.key);
+    });
+
+    // On scroll, update zoom
+    document.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      this.scale += e.deltaY * -0.01;
+      
+      // Restrict scale from [.125, 3]
+      this.scale = Math.min(Math.max(.125, this.scale), 3);
+    }, { passive: false });
+  }
+
+  update = (): void => {
+    let vel = 50;
+
+    // Update position from keyboard inputs
+    if (this.keysDown.includes('ArrowUp')) {
+      this.position = addVectors({ x: 0, y: -vel }, this.position);
+    } else if (this.keysDown.includes('ArrowDown')) {
+      this.position = addVectors({ x: 0, y: vel }, this.position);
+    }
+
+    if (this.keysDown.includes('ArrowRight')) {
+      this.position = addVectors({ x: vel, y: 0 }, this.position);
+    } else if (this.keysDown.includes('ArrowLeft')) {
+      this.position = addVectors({ x: -vel, y: 0 }, this.position);
+    }
   }
 }

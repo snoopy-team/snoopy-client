@@ -101,7 +101,6 @@ export class Agent implements SceneObject {
    * @param deltaTime the amount of time, in seconds, that has changed since the last update
    */
   update = (deltaTime: number): void => {
-    console.log(this.velocity, this.position)
     // // Find the difference between our velocity and acceleration vectors
     // let velocityDiff = subractVectors(this.destinationVelocity, this.velocity);
     // let accelerationDiff = subractVectors(this.destinationAcceleration, this.acceleration);
