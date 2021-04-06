@@ -123,7 +123,7 @@ export class GameWorld {
         for (let key of Object.keys(this.players)) {
           let player = this.players[key];
           ctx.font = "15px Arial";
-          let pos = `(${player.getPosition().x}, ${player.getPosition().y})`
+          let pos = `(${Math.round(player.getPosition().x)}, ${Math.round(player.getPosition().y)})`
           ctx.fillText(`Player ID: "${key}", Position: ${pos}`, 30, 30);
           index++;
         }

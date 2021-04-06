@@ -2,12 +2,17 @@ import { Background } from './GridBackground.js';
 import { canvas, ctx } from './index.js';
 import { addVectors, multiplyVectors, origin, subractVectors, Vec2 } from './VectorMath.js';
 
-// TODO
+// Represents an object that can be viewed with a Camera. It must include methods that provide
+// enough information for the Camera to scale it, transform its position into a screen coordinate,
+// and must be able to draw itself at a certain location.
 export type SceneObject = {
   // Returns the world position of this SceneObject (as opposed to screen coordinates)
   getPosition: () => Vec2;
   // Draws the sprite given a screen coordinate (where (0,0) is the top left corner of the screen)
-  drawSprite(pos: Vec2): void;
+  // and the dimensions (width, height) of the on-screen object
+  drawSprite(pos: Vec2, size: Vec2): void;
+  // Returns the pixel dimensions of this SceneObject. The Camera can decide to scale this
+  getSize: () => Vec2;
 }
 
 /**
@@ -34,6 +39,9 @@ export type SceneObject = {
   private FOLLOW_DISTANCE = 50;
   // Percentage of gap between curr position & dest position to close each update. See this.update
   private lerpFactor = 0.1;
+  // A scale of 1 means pixels match perfectly to their on-screen size. A scale of 2 means doubling
+  // the on-screen size of objects, and a scale of 0.5 means halving the size.
+  private scale: number;
 
   /**
    * Constructs a new Camera, given information about what to follow
@@ -41,14 +49,14 @@ export type SceneObject = {
    * For instance, you might want a Camera to focus on the (x,y) coords of an Agent. Or, you might
    * want a free Camera that moves around with your arrow keys.
    */
-  constructor(positionToCenter: () => Vec2, scene: Array<SceneObject>, background: Background) {
+  constructor(positionToCenter: () => Vec2, scene: Array<SceneObject>, background: Background, 
+    scale: number = 1) {
     this.destinationPosition = positionToCenter;
     this.position = this.destinationPosition();
     this.scene = scene;
     this.background = background;
-
-    // TODO: should this be left arbitrarily defined?
-    this.axesRadii = {x: canvas.width / 2, y: canvas.height / 2};
+    this.scale = scale;
+    this.axesRadii = {x: this.scale * (canvas.width / 2), y: this.scale * (canvas.height / 2)};
   }
 
   /**
@@ -87,7 +95,7 @@ export type SceneObject = {
       newPos.y = destPos.y - Math.sign(diff.y) * this.FOLLOW_DISTANCE;
     }
 
-    this.position = newPos;
+    this.position = destPos;
   }
 
   // TODO
@@ -97,26 +105,26 @@ export type SceneObject = {
     // Draw background
     let worldBounds = this.computeWorldBounds();
     let gridSquareSize = 100;
-    let gridSquareVec = { x: gridSquareSize, y: gridSquareSize };
+    let gridSquareVec = { x: this.scale * gridSquareSize, y: this.scale * gridSquareSize };
     this.background.draw(ctx, worldBounds.topLeft, worldBounds.bottomRight, gridSquareVec);
     
     // Draw all objects
     for (let object of this.scene) {
       let objPos = object.getPosition();
+      let scaledSize = multiplyVectors({ x: this.scale, y: this.scale }, object.getSize());
 
       if (this.coordWithinBounds(objPos)) {
         let objectScreenCoords = this.worldToScreenCoords(objPos);
-        object.drawSprite(objectScreenCoords);
+        object.drawSprite(objectScreenCoords, scaledSize);
       }
     }
   }
 
-  // TODO
+  // TODO HMMM somehow I have to scale these coordinates
   private worldToScreenCoords(coord: Vec2): Vec2 {
-    let topLeft = this.computeWorldBounds().topLeft;
     return {
-      x: coord.x - topLeft.x,
-      y: coord.y - topLeft.y
+      x: canvas.width / 2 + this.scale * (coord.x - this.position.x),
+      y: canvas.height / 2 + this.scale * (coord.y - this.position.y),
     }
   }
 

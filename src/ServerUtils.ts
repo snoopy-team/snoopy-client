@@ -95,7 +95,7 @@ export class ServerMock implements Server {
    * Starts providing mock data
    */
   startProvidingUpdates = () => {
-    this.oneSecIntervalUpdates();
+    this.oneSecondSineMotion();
   }
 
   /**
@@ -116,6 +116,56 @@ export class ServerMock implements Server {
    * Provides some manually defined updates to the server manager at a rate of one second.
    */
   oneSecIntervalUpdates = (): void => {
+    let mockData: Array<ServerUpdate> = [
+      {
+        players: [{
+          id: 'example player id',
+          position: { x:0, y:0 },
+          velocity: { x:200, y:200 },
+          acceleration: { x: 0, y: -50 },
+          orientation: 0,
+          cooldown: 0,
+        }],
+        bullets: []
+      },
+      {
+        players: [{
+          id: 'example player id',
+          position: { x:100, y:100 },
+          velocity: { x:5, y:5 },
+          acceleration: { x:0, y:0 },
+          orientation: Math.PI, // half rotation
+          cooldown: 0,
+        }],
+        bullets: []
+      },
+      {
+        players: [{
+          id: 'example player id',
+          position: { x:100, y:50 },
+          velocity: { x:0, y:0 },
+          acceleration: { x:0, y:0 },
+          orientation: 2 * Math.PI, // full rotation
+          cooldown: 0,
+        }],
+        bullets: [{
+          id: 'example bullet id',
+          position: { x: 50, y: 50 },
+          velocity: { x: 30, y: 5 }
+        }]
+      },
+    ];
+
+    let i = 0;
+    setInterval(() => {
+      if (i < mockData.length) {
+        this.broadcastUpdate(mockData[i])
+        i++;
+      }
+    }, 1000);
+  }
+
+  oneSecondSineMotion = (): void => {
     let flag = true;
 
     let sineMotion = (toggleFlag: boolean) => {
@@ -146,54 +196,9 @@ export class ServerMock implements Server {
       }
     }
 
-    let mockData: Array<ServerUpdate> = [
-      {
-        players: [{
-          id: 'example player id',
-          position: { x:0, y:0 },
-          velocity: { x:200, y:200 },
-          acceleration: { x: 0, y: -50 },
-          orientation: 0,
-          cooldown: 0,
-        }],
-        bullets: []
-      },
-      // {
-      //   players: [{
-      //     id: 'example player id',
-      //     position: { x:100, y:100 },
-      //     velocity: { x:5, y:5 },
-      //     acceleration: { x:0, y:0 },
-      //     orientation: Math.PI, // half rotation
-      //     cooldown: 0,
-      //   }],
-      //   bullets: []
-      // },
-      // {
-      //   players: [{
-      //     id: 'example player id',
-      //     position: { x:100, y:50 },
-      //     velocity: { x:0, y:0 },
-      //     acceleration: { x:0, y:0 },
-      //     orientation: 2 * Math.PI, // full rotation
-      //     cooldown: 0,
-      //   }],
-      //   bullets: [{
-      //     id: 'example bullet id',
-      //     position: { x: 50, y: 50 },
-      //     velocity: { x: 30, y: 5 }
-      //   }]
-      // },
-    ];
-
-    // let i = 0;
     setInterval(() => {
       this.broadcastUpdate(sineMotion(flag));
       flag = !flag;
-      // if (i < mockData.length) {
-      //   this.broadcastUpdate(mockData[i])
-      //   i++;
-      // }
     }, 1000);
   }
 }

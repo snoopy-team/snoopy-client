@@ -18,6 +18,7 @@ export type AgentState = {
  * Represents an agent, either AI controlled or player controlled.
  */
 export class Agent implements SceneObject {
+  private size: Vec2;
   // ------- Where I am currently -------
   private orientation = 0; // In radians
   private position: Vec2;
@@ -36,6 +37,8 @@ export class Agent implements SceneObject {
    * properties (i.e. this.destinationVelocity = this.velocity)
    */
   constructor(state: AgentState) {
+    this.size = { x: 100, y: 50 };
+
     this.position = state.position;
     this.velocity = state.velocity;
     this.acceleration = state.acceleration;
@@ -54,9 +57,9 @@ export class Agent implements SceneObject {
    * Draw sprite on the canvas, where its center is at this.position. Currently the sprite is a
    * simple black rectangle.
    */
-  drawSprite = (location: Vec2): void => {
-    let width = 100;
-    let height = 50;
+  drawSprite = (location: Vec2, size: Vec2): void => {
+    let width = size.x;
+    let height = size.y;
     // Where we want our rect to be drawn
     let centeredPos = {
       x: location.x - width / 2,
@@ -64,7 +67,7 @@ export class Agent implements SceneObject {
     }
 
     this.rotateThenDraw(
-      location,
+      centeredPos,
       this.orientation,
       centeredPos,
       (pos: Vec2) => {
@@ -78,6 +81,11 @@ export class Agent implements SceneObject {
    * Returns the world position of this Agent (as opposed to screen coordinates)
    */
   getPosition = (): Vec2 => this.position;
+
+  /**
+   * 
+   */
+  getSize = (): Vec2 => this.size;
 
   // TODO: Discuss whether below is a good design decision. Will probably lead to some weird quirks
   // with movement not feeling responsive.

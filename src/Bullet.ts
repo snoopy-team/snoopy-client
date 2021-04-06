@@ -17,11 +17,12 @@ export type BulletState = {
 export class Bullet implements SceneObject {
   private position: Vec2;
   private velocity: Vec2;
-  private radius = 10;
+  private radius: number;
 
   constructor(position: Vec2, velocity: Vec2) {
     this.position = position;
     this.velocity = velocity;
+    this.radius = 10;
   }
 
   /**
@@ -32,14 +33,22 @@ export class Bullet implements SceneObject {
   };
 
   /**
-   * Draws the sprite of this bullet
+   * Draws the sprite of this bullet. Note that the size parameter represents the radius on both the
+   * x AND y axis.
    */
-  drawSprite = (pos: Vec2): void => {
+  drawSprite = (pos: Vec2, size: Vec2): void => {
     ctx.fillStyle = 'black';
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, this.radius, 0, Math.PI * 2);
+    ctx.arc(pos.x, pos.y, size.x, 0, Math.PI * 2);
     ctx.fill()
   }
+
+  /**
+   * 
+   */
+  getSize = (): Vec2 => { 
+    return { x: this.radius, y: this.radius } 
+  };
 
   /**
    * Given an amount of time that has passed since the last frame, update the properties of this
