@@ -211,6 +211,7 @@ export class DebugCamera extends Camera {
     this.debugOn = true;
     this.keysDown = [];
     this.debugLines = [];
+    this.debugLines.push(() => `Camera Mode: ${ this.debugOn ? 'Debug Camera' : 'Player Camera' }`);
 
     document.addEventListener('keydown', (e: KeyboardEvent) => {
       this.keysDown.push(e.key);
@@ -247,15 +248,15 @@ export class DebugCamera extends Camera {
 
       // Update position from keyboard inputs
       if (this.keysDown.includes('ArrowUp')) {
-        this.augmentedPosition = addVectors({ x: 0, y: -vel }, this.position);
+        this.augmentedPosition = addVectors({ x: 0, y: -vel }, this.augmentedPosition);
       } else if (this.keysDown.includes('ArrowDown')) {
-        this.position = addVectors({ x: 0, y: vel }, this.position);
+        this.augmentedPosition = addVectors({ x: 0, y: vel }, this.augmentedPosition);
       }
 
       if (this.keysDown.includes('ArrowRight')) {
-        this.position = addVectors({ x: vel, y: 0 }, this.position);
+        this.augmentedPosition = addVectors({ x: vel, y: 0 }, this.augmentedPosition);
       } else if (this.keysDown.includes('ArrowLeft')) {
-        this.position = addVectors({ x: -vel, y: 0 }, this.position);
+        this.augmentedPosition = addVectors({ x: -vel, y: 0 }, this.augmentedPosition);
       }
 
       if (this.isShaking) this.shake(deltaTime);
