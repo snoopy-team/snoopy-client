@@ -18,9 +18,30 @@ export const constants = {
   SERVER_SOCKET_URL: 'todo: insert url here'
 }
 
-// Create update manager to serve as the in-between of the server and our game
-const serverUpdateManager: ServerUpdateManager = new ServerUpdateManager(new ServerMock());
+// Load assets
+// -> Snoopy image
+let snoopyImageLoaded = false;
+export const imageSnoopy = new Image();
+imageSnoopy.onload = () => snoopyImageLoaded = true; 
+imageSnoopy.src = '../public/assets/hq/snoopy_hq.png';
+// -> Red Barron image
+let barronImageLoaded = false;
+export const imageBarron = new Image();
+imageBarron.onload = () => barronImageLoaded = true; 
+imageBarron.src = '../public/assets/hq/red_barron.png';
 
-// Create world with update manager and begin game
-let world: GameWorld = new GameWorld(serverUpdateManager);
-world.gameLoop();
+// Start game after assets have loaded. Check if they've loaded every `checkLoadedFreq` milliseconds
+let checkLoadedFreq = 33;
+let loadTimer = setInterval(() => {
+  if (snoopyImageLoaded && barronImageLoaded) {
+    // Stop timer
+    clearInterval(loadTimer);
+
+    // Create update manager to serve as the in-between of the server and our game
+    const serverUpdateManager: ServerUpdateManager = new ServerUpdateManager(new ServerMock());
+
+    // Create world with update manager and begin game
+    let world: GameWorld = new GameWorld(serverUpdateManager);
+    world.gameLoop();
+  }
+}, checkLoadedFreq);

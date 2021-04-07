@@ -19,6 +19,7 @@ export type AgentState = {
  */
 export class Agent implements SceneObject {
   private size: Vec2;
+  private drawSpriteImage: (pos: Vec2, size: Vec2) => void;
   // ------- Where I am currently -------
   private orientation = 0; // In radians
   private position: Vec2;
@@ -36,8 +37,9 @@ export class Agent implements SceneObject {
    * Sets all properties to the given state and sets the destination to the current
    * properties (i.e. this.destinationVelocity = this.velocity)
    */
-  constructor(state: AgentState) {
-    this.size = { x: 100, y: 50 };
+  constructor(state: AgentState, drawSprite: (pos: Vec2, size: Vec2) => void, size: Vec2) {
+    this.size = size;
+    this.drawSpriteImage = drawSprite;
 
     this.position = state.position;
     this.velocity = state.velocity;
@@ -70,10 +72,11 @@ export class Agent implements SceneObject {
       centeredPos,
       this.orientation,
       centeredPos,
-      (pos: Vec2) => {
-        ctx.fillStyle = "black";
-        ctx.fillRect(pos.x, pos.y, width, height);
-      }
+      (pos: Vec2) => this.drawSpriteImage(pos, size),
+      // (pos: Vec2) => {
+      //   ctx.fillStyle = "black";
+      //   ctx.fillRect(pos.x, pos.y, width, height);
+      // }
     );
   }
 

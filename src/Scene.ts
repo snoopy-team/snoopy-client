@@ -27,13 +27,15 @@ export type SceneObject = {
  * keys (i.e. for a debug camera)
  */
  export class Camera {
-  // The position this camera is looking at
-  protected position: Vec2;
+  // The position on the path that this camera is currently on. This is *not necessarily* the
+  // position that the camera is centered on because this position can be augmented via a call to
+  // shake() or some other augmentation of the position. See the augmentedPosition proprty.
+  protected pathPosition: Vec2;
   // The radius for both the x and y axis. This will determine what the camera can see. We can zoom
   // in or zoom out by multiplying these by some constant.
   private axesRadii: Vec2;
   // This default will be changed when centerOn method is called
-  private destinationPosition: () => Vec2 = () => this.position;
+  private destinationPosition: () => Vec2;;
   private scene: Array<SceneObject>;
   private background: Background;
   private FOLLOW_DISTANCE = 50;
@@ -45,6 +47,10 @@ export type SceneObject = {
   // The amount of time the camera has been shaking for. Initializes to 0 and resets after a shake.
   private shakeTimeElapsed: number;
   protected isShaking: boolean;
+  // This is the position that the camera is centered at. It is at some position relative to
+  // pathPosition. For instance, a call to shake() offsets the position of this camera relative to
+  // path position by using a formula similar to `f(x) = sin(50x) / x` where x represents time since
+  // the shake started.
   protected augmentedPosition: Vec2;
 
   /**
@@ -56,8 +62,8 @@ export type SceneObject = {
   constructor(positionToCenter: () => Vec2, scene: Array<SceneObject>, background: Background, 
     scale: number = 1) {
     this.destinationPosition = positionToCenter;
-    this.position = this.destinationPosition();
-    this.augmentedPosition = this.position;
+    this.pathPosition = this.destinationPosition();
+    this.augmentedPosition = this.pathPosition;
     this.scene = scene;
     this.background = background;
     this.scale = scale;
@@ -77,41 +83,36 @@ export type SceneObject = {
   }
 
   /**
-   * Currently, update simply snaps to whatever the camera is following. However, soon I will
-   * implement smooth camera following via lerping and other types of cameras such as a free control
-   * camera.
-   */
-  /**
    * Smoothly interpolate toward destination until camera is FOLLOW_DISTANCE from destination, then 
    * clamp to FOLLOW_DISTANCE away from destination.
    */
   update(deltaTime: number): void {
     let destPos = this.destinationPosition();
-    let diff = subractVectors(destPos, this.position);
+    let diff = subractVectors(destPos, this.pathPosition);
 
     // Only update position if the difference between current and destination is greater than 1
     if (Math.abs(diff.x) > 1 || Math.abs(diff.y) > 1) {
       let newPos = { x: 0, y: 0 };
 
       if (diff.x <= this.FOLLOW_DISTANCE) {
-        newPos.x = this.position.x + diff.x * this.lerpFactor
+        newPos.x = this.pathPosition.x + diff.x * this.lerpFactor
       } else {
         newPos.x = destPos.x - Math.sign(diff.x) * this.FOLLOW_DISTANCE;
       }
 
       if (diff.y <= this.FOLLOW_DISTANCE) {
-        newPos.y = this.position.y + diff.y * this.lerpFactor
+        newPos.y = this.pathPosition.y + diff.y * this.lerpFactor
       } else {
         newPos.y = destPos.y - Math.sign(diff.y) * this.FOLLOW_DISTANCE;
       }
 
-      this.position = newPos;
+      this.pathPosition = newPos;
     }
 
     if (this.isShaking) {
       this.shake(deltaTime);
     } else {
-      this.augmentedPosition = this.position;
+      this.augmentedPosition = this.pathPosition;
     }
   }
 
@@ -126,19 +127,23 @@ export type SceneObject = {
     // Only shake for 500ms
     if (this.shakeTimeElapsed <= 0.5) {
       // let periodLength = (this.shakeTimeElapsed / Math.PI)
-      let toAdd = this.shakeTimeElapsed == 0 ? 0 : Math.sin(50 * this.shakeTimeElapsed) / this.shakeTimeElapsed;
-      this.augmentedPosition = addVectors(this.position, { x: 0, y: toAdd });
+      let toAdd = this.shakeTimeElapsed == 0 
+        ? 0 
+        : Math.sin(50 * this.shakeTimeElapsed) / this.shakeTimeElapsed;
+      this.augmentedPosition = addVectors(this.pathPosition, { x: 0, y: toAdd });
       this.shakeTimeElapsed += deltaTime;
     } else {
       this.shakeTimeElapsed = 0;
       this.isShaking = false;
-      this.augmentedPosition = this.position;
+      this.augmentedPosition = this.pathPosition;
     }
   }
 
-  // TODO
-  // The current approach is to linearly check if each object should be on the screen. However, a
-  // future implemention of scene may allow us to simply get all coordinates in an area.
+  /**
+   * Renders all `SceneObject`s that this `Camera` is keeping track of in `this.scene`.
+   * The current approach is to linearly check if each object should be on the screen. However, a
+   * future implemention of scene may allow us to simply get all coordinates in an area.
+   */
   renderAll = (): void => {
     // Draw background
     let worldBounds = this.computeWorldBounds();
@@ -158,7 +163,8 @@ export type SceneObject = {
     }
   }
 
-  // TODO 
+  // Converts the given world coordinates to screen coordinates. This factors in both scaling and
+  // the center position of the screen that this camera can see.
   private worldToScreenCoords(coord: Vec2): Vec2 {
     return {
       x: canvas.width / 2 + this.scale * (coord.x - this.augmentedPosition.x),

@@ -1,10 +1,10 @@
-import { canvas, ctx, constants } from './index.js';
+import { canvas, ctx, constants, imageSnoopy } from './index.js';
 import { Agent, AgentState } from './Agents.js';
 import { Bullet } from './Bullet.js';
 import { Server, ServerMock, ServerUpdate, ServerUpdateManager } from './ServerUtils.js';
 import { Camera, DebugCamera, SceneObject } from './Scene.js';
 import { GridBackground } from './GridBackground.js';
-import { origin } from './VectorMath.js';
+import { origin, Vec2 } from './VectorMath.js';
 
 /**
  * Holds the main game loop for this dogfighting game. Holds the state and behavior necessary to
@@ -73,7 +73,14 @@ export class GameWorld {
           // Check if player is new
           let playerIsNew = !this.players.hasOwnProperty(state.id);
           if (playerIsNew) {
-            let agent = new Agent(state);
+            let agent = new Agent(
+              state, 
+              (pos: Vec2, size: Vec2) => {
+                // TODO: figure out how to determine which player to draw (Snoopy vs Red Barron)
+                ctx.drawImage(imageSnoopy, pos.x, pos.y, size.x, size.y);
+              },
+              { x: 100, y: 150 } // Will need to change this for drawing Red Barron sprite
+            );
             this.players[state.id] = agent;
             this.scene.push(agent);
             this.camera.centerOn(agent.getPosition)
