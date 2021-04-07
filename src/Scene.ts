@@ -1,6 +1,6 @@
 import { Background } from './GridBackground.js';
 import { canvas, ctx } from './index.js';
-import { addVectors, multiplyVectors, origin, subractVectors, Vec2 } from './VectorMath.js';
+import { addVectors, multiplyVectors, origin, randInt, subractVectors, Vec2 } from './VectorMath.js';
 
 // Represents an object that can be viewed with a Camera. It must include methods that provide
 // enough information for the Camera to scale it, transform its position into a screen coordinate,
@@ -42,6 +42,10 @@ export type SceneObject = {
   // A scale of 1 means pixels match perfectly to their on-screen size. A scale of 2 means doubling
   // the on-screen size of objects, and a scale of 0.5 means halving the size.
   protected scale: number;
+  // The amount of time the camera has been shaking for. Initializes to 0 and resets after a shake.
+  private shakeTimeElapsed: number;
+  protected isShaking: boolean;
+  protected augmentedPosition: Vec2;
 
   /**
    * Constructs a new Camera, given information about what to follow
@@ -53,10 +57,13 @@ export type SceneObject = {
     scale: number = 1) {
     this.destinationPosition = positionToCenter;
     this.position = this.destinationPosition();
+    this.augmentedPosition = this.position;
     this.scene = scene;
     this.background = background;
     this.scale = scale;
     this.axesRadii = {x: this.scale * (canvas.width / 2), y: this.scale * (canvas.height / 2)};
+    this.shakeTimeElapsed = 0;
+    this.isShaking = false;
   }
 
   /**
@@ -78,7 +85,7 @@ export type SceneObject = {
    * Smoothly interpolate toward destination until camera is FOLLOW_DISTANCE from destination, then 
    * clamp to FOLLOW_DISTANCE away from destination.
    */
-  update = (): void => {
+  update(deltaTime: number): void {
     let destPos = this.destinationPosition();
     let diff = subractVectors(destPos, this.position);
 
@@ -99,6 +106,33 @@ export type SceneObject = {
       }
 
       this.position = newPos;
+    }
+
+    if (this.isShaking) {
+      this.shake(deltaTime);
+    } else {
+      this.augmentedPosition = this.position;
+    }
+  }
+
+  /**
+   * Shakes the camera. Used for effects like getting hit with a bullet.
+   */
+  shake = (deltaTime: number): void => {
+    if (!this.isShaking) {
+      this.isShaking = true;
+    }
+    
+    // Only shake for 500ms
+    if (this.shakeTimeElapsed <= 0.5) {
+      // let periodLength = (this.shakeTimeElapsed / Math.PI)
+      let toAdd = this.shakeTimeElapsed == 0 ? 0 : Math.sin(50 * this.shakeTimeElapsed) / this.shakeTimeElapsed;
+      this.augmentedPosition = addVectors(this.position, { x: 0, y: toAdd });
+      this.shakeTimeElapsed += deltaTime;
+    } else {
+      this.shakeTimeElapsed = 0;
+      this.isShaking = false;
+      this.augmentedPosition = this.position;
     }
   }
 
@@ -127,8 +161,8 @@ export type SceneObject = {
   // TODO 
   private worldToScreenCoords(coord: Vec2): Vec2 {
     return {
-      x: canvas.width / 2 + this.scale * (coord.x - this.position.x),
-      y: canvas.height / 2 + this.scale * (coord.y - this.position.y),
+      x: canvas.width / 2 + this.scale * (coord.x - this.augmentedPosition.x),
+      y: canvas.height / 2 + this.scale * (coord.y - this.augmentedPosition.y),
     }
   }
 
@@ -137,12 +171,12 @@ export type SceneObject = {
   private computeWorldBounds = (): { topLeft: Vec2, bottomRight: Vec2 } => {
     // Compute bounds
     let topLeft = {
-      x: this.position.x - this.axesRadii.x / this.scale,
-      y: this.position.y - this.axesRadii.y / this.scale
+      x: this.augmentedPosition.x - this.axesRadii.x / this.scale,
+      y: this.augmentedPosition.y - this.axesRadii.y / this.scale
     };
     let bottomRight = {
-      x: this.position.x + this.axesRadii.x / this.scale,
-      y: this.position.y + this.axesRadii.y / this.scale
+      x: this.augmentedPosition.x + this.axesRadii.x / this.scale,
+      y: this.augmentedPosition.y + this.axesRadii.y / this.scale
     };
 
     return { topLeft, bottomRight }
@@ -161,19 +195,35 @@ export type SceneObject = {
 }
 
 /**
- * Same as normal camera, except follows arrow key controls instead of focusing on a player
+ * Same as normal camera, except follows arrow key controls instead of focusing on a player.
+ * DebugCamera has the ability to toggle debug capabilities on or off (if off, is a normal Camera).
  */
 export class DebugCamera extends Camera {
   // Holds values from an event.key from a vanilla keyboard event listener
   private keysDown: Array<string>;
+  // Whether debug mode is on or not
+  private debugOn: boolean;
+  // Individual lines of text (separated by a new line) to show in the debug menu
+  private debugLines: Array<() => string>;
 
   constructor(scene: Array<SceneObject>, background: Background, scale: number = 1) {
     super(() => origin, scene, background, scale);
-
+    this.debugOn = true;
     this.keysDown = [];
+    this.debugLines = [];
 
-    let l = document.addEventListener('keydown', (e: KeyboardEvent) => {
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
       this.keysDown.push(e.key);
+
+      // Toggle Camera type on space
+      if (e.key == ' ') {
+        this.toggleDebugFeatures();
+      }
+
+      // Simulate shaek
+      if (e.key == 's') {
+        this.shake(0);
+      }
     });
 
     document.addEventListener('keyup', (e: KeyboardEvent) => {
@@ -190,20 +240,52 @@ export class DebugCamera extends Camera {
     }, { passive: false });
   }
 
-  update = (): void => {
-    let vel = 50;
+  update = (deltaTime: number): void => {
+    // Show and allow debug features if debug mode is on. Otherwise, act like a normal Camera.
+    if (this.debugOn) {
+      let vel = 50;
 
-    // Update position from keyboard inputs
-    if (this.keysDown.includes('ArrowUp')) {
-      this.position = addVectors({ x: 0, y: -vel }, this.position);
-    } else if (this.keysDown.includes('ArrowDown')) {
-      this.position = addVectors({ x: 0, y: vel }, this.position);
-    }
+      // Update position from keyboard inputs
+      if (this.keysDown.includes('ArrowUp')) {
+        this.augmentedPosition = addVectors({ x: 0, y: -vel }, this.position);
+      } else if (this.keysDown.includes('ArrowDown')) {
+        this.position = addVectors({ x: 0, y: vel }, this.position);
+      }
 
-    if (this.keysDown.includes('ArrowRight')) {
-      this.position = addVectors({ x: vel, y: 0 }, this.position);
-    } else if (this.keysDown.includes('ArrowLeft')) {
-      this.position = addVectors({ x: -vel, y: 0 }, this.position);
+      if (this.keysDown.includes('ArrowRight')) {
+        this.position = addVectors({ x: vel, y: 0 }, this.position);
+      } else if (this.keysDown.includes('ArrowLeft')) {
+        this.position = addVectors({ x: -vel, y: 0 }, this.position);
+      }
+
+      if (this.isShaking) this.shake(deltaTime);
+    } else {
+      super.update(deltaTime);
     }
+  }
+
+  /**
+   * Adds a line of text to the debug menu
+   * @param line a function that returns a line of text to add to the debug menu
+   */
+  addToDebugMenu(line: () => string): void {
+    this.debugLines.push(line);
+  }
+
+  /**
+   * Displays the debug menu in the top left corner of the screen
+   */
+  displayDebugMenu(): void {
+    ctx.font = "15px Arial";
+    let currLineYPos = 30;
+    for (let grabDebugMessage of this.debugLines) {
+      ctx.fillText(grabDebugMessage(), 30, currLineYPos);
+      currLineYPos += 30;
+    }
+  }
+
+  // Toggles debug menu and debug capabilities (like arrow key movement and mousewheel zooming)
+  private toggleDebugFeatures = (): void => {
+    this.debugOn = !this.debugOn;
   }
 }

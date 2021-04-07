@@ -22,6 +22,7 @@ export class GameWorld {
   // Provides our Camera with objects to draw
   private scene: Array<SceneObject>;
   private camera: Camera;
+  private finishedCreatingDebugMenu: boolean;
 
   /**
    * Constructs a GameWorld from information that is available via a server update packet.
@@ -40,6 +41,7 @@ export class GameWorld {
     this.scene = [];
     this.camera = new Camera(() => origin, this.scene, new GridBackground());
     this.camera = new DebugCamera(this.scene, new GridBackground());
+    this.finishedCreatingDebugMenu = false;
   }
 
   /**
@@ -75,6 +77,12 @@ export class GameWorld {
             this.players[state.id] = agent;
             this.scene.push(agent);
             this.camera.centerOn(agent.getPosition)
+
+            if (constants.DEBUG_MODE) {
+              ctx.font = "15px Arial";
+              (<DebugCamera> this.camera).addToDebugMenu(() => `Player ID: "${state.id}", Position: (${Math.round(agent.getPosition().x)}, ${Math.round(agent.getPosition().y)})`);
+              (<DebugCamera> this.camera).addToDebugMenu(() => `Press "s" to simulate camera shake.`);
+            }
           }
 
           this.players[state.id].getServerUpdate(state);
@@ -109,19 +117,12 @@ export class GameWorld {
       }
 
       // Draw all game objects
-      this.camera.update();
+      this.camera.update(this.millisPassedSinceLastFrame / 1000);
       this.camera.renderAll();
 
       // Add debug info to the top left
       if (constants.DEBUG_MODE) {
-        let index = 0;
-        for (let key of Object.keys(this.players)) {
-          let player = this.players[key];
-          ctx.font = "15px Arial";
-          let pos = `(${Math.round(player.getPosition().x)}, ${Math.round(player.getPosition().y)})`
-          ctx.fillText(`Player ID: "${key}", Position: ${pos}`, 30, 30);
-          index++;
-        }
+        (<DebugCamera> this.camera).displayDebugMenu();
       }
 
       this.millisPassedSinceLastFrame = 0;
