@@ -218,6 +218,8 @@ export class DebugCamera extends Camera {
     this.keysDown = [];
     this.debugLines = [];
     this.debugLines.push(() => `Camera Mode: ${ this.debugOn ? 'Debug Camera' : 'Player Camera' }`);
+    this.debugLines.push(() => `Spacebar to toggle camera mode`);
+    this.debugLines.push(() => `Scroll to zoom, arrow keys to pan camera in debug mode`);
 
     document.addEventListener('keydown', (e: KeyboardEvent) => {
       this.keysDown.push(e.key);

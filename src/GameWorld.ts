@@ -22,7 +22,6 @@ export class GameWorld {
   // Provides our Camera with objects to draw
   private scene: Array<SceneObject>;
   private camera: Camera;
-  private finishedCreatingDebugMenu: boolean;
 
   /**
    * Constructs a GameWorld from information that is available via a server update packet.
@@ -39,9 +38,9 @@ export class GameWorld {
     this.before = Date.now();
     this.millisPassedSinceLastFrame = 0;
     this.scene = [];
-    this.camera = new Camera(() => origin, this.scene, new GridBackground());
-    this.camera = new DebugCamera(this.scene, new GridBackground());
-    this.finishedCreatingDebugMenu = false;
+    this.camera = constants.DEBUG_MODE 
+      ? new DebugCamera(this.scene, new GridBackground())
+      : new Camera(() => origin, this.scene, new GridBackground());
   }
 
   /**

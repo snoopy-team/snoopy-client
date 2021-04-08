@@ -6,10 +6,27 @@ export interface Background {
 }
 
 /**
+ * For drawing the actual game background that a player should see when playing the game. Has a blue
+ * background with some clouds that will pass by as the player flies by.
+ */
+export class CloudySkyBackground {
+  // TODO
+  draw = (topLeft: Vec2) => {
+    let clouds = [];
+
+
+  }
+}
+
+/**
  * For drawing grid lines as a background. This won't necessarily be used as our final background
  * for the project but it will serve the purpose to visually test our camera.
  */
 export class GridBackground implements Background {
+  // TODO: take in parameters in constructor that are only relevant to GridBackground such as
+  // dimensions. Go ahead and make CloudySkyBackground draw() method and see what parameters it
+  // needs. Then, abstract to Background interface. 
+
   /**
    * Given a point of origin and screen bounds (top left, bottom right), draws a grid background
    * where each grid square is the size given by `dimensions`
@@ -17,8 +34,7 @@ export class GridBackground implements Background {
    * @param topLeft the absolute, world coordinate of the top left of our viewing area
    * @param bottomRight the absolute, world coordinate of the bottom right of our viewing area
    */
-  draw = (ctx: CanvasRenderingContext2D, topLeft: Vec2, bottomRight: Vec2, 
-    dimensions: Vec2) => {
+  draw = (ctx: CanvasRenderingContext2D, topLeft: Vec2, bottomRight: Vec2, dimensions: Vec2) => {
       // This is the (x,y) of the intersection of the top, leftmost horizintal and vertical lines
       // Should be above and to the left of the `topLeft` viewing bound.
       let gridOriginOffset = modVectors(topLeft, dimensions);

@@ -1,6 +1,6 @@
 import { GameWorld } from './GameWorld.js';
 import { GridBackground } from './GridBackground.js';
-import { ServerMock, ServerUpdateManager } from './ServerUtils.js';
+import { LiveServer, ServerMock, ServerUpdateManager } from './ServerUtils.js';
 
 export const canvas: HTMLCanvasElement = document.getElementById('game') as HTMLCanvasElement;
 canvas.width = window.innerWidth;
@@ -14,11 +14,11 @@ export const constants = {
   // Most likely this will change to something a bit more fun (like a blue sky with clouds)
   BACKGROUND_COLOR: 'white',
   // Whether or not debugger info should be displayed
-  DEBUG_MODE: true,
-  SERVER_SOCKET_URL: 'todo: insert url here'
+  DEBUG_MODE: false,
+  SERVER_SOCKET_URL: 'ws://127.0.0.1:3000/'
 }
 
-// Load assets
+// -------- Load assets --------
 // -> Snoopy image
 let snoopyImageLoaded = false;
 export const imageSnoopy = new Image();
@@ -29,16 +29,32 @@ let barronImageLoaded = false;
 export const imageBarron = new Image();
 imageBarron.onload = () => barronImageLoaded = true; 
 imageBarron.src = '../public/assets/hq/red_barron.png';
+// -> Clouds 1-4
+export const clouds = [new Image(), new Image(), new Image(), new Image()];
+const cloudImagesLoaded = [false, false, false, false];
+for (let i = 1; i <= 4; i++) {
+  let imageCloud = clouds[i - 1];
+  imageCloud.onload = () => cloudImagesLoaded[i - 1] = true; 
+  imageCloud.src = '../public/assets/pixelated/clouds/cloud' + i + '.png';
+}
 
 // Start game after assets have loaded. Check if they've loaded every `checkLoadedFreq` milliseconds
 let checkLoadedFreq = 33;
 let loadTimer = setInterval(() => {
-  if (snoopyImageLoaded && barronImageLoaded) {
+  let allCloudsLoaded = true;
+  for (let cloudLoaded of cloudImagesLoaded) {
+    if (!cloudLoaded) {
+      allCloudsLoaded = false;
+    }
+  }
+  if (snoopyImageLoaded && barronImageLoaded && allCloudsLoaded) {
     // Stop timer
     clearInterval(loadTimer);
 
     // Create update manager to serve as the in-between of the server and our game
-    const serverUpdateManager: ServerUpdateManager = new ServerUpdateManager(new ServerMock());
+    const serverUpdateManager: ServerUpdateManager = new ServerUpdateManager(
+      constants.DEBUG_MODE ? new ServerMock() : new LiveServer()
+    );
 
     // Create world with update manager and begin game
     let world: GameWorld = new GameWorld(serverUpdateManager);

@@ -220,6 +220,32 @@ export class LiveServer implements Server {
   };
 
   startProvidingUpdates = (): void => {
+
+    // let webSocket = new WebSocket(constants.SERVER_SOCKET_URL);
+    // webSocket.onclose = () => console.log('socket closed');
+    // webSocket.onerror = (e) => console.log('Error:', e);
+    // webSocket.onopen = () => {
+    //   console.log('Server connected successfully');
+
+    //   // Keep track of which keys are down at any point in time and emit a message to server when
+    //   // keys are pressed
+    //   document.addEventListener('keydown', (e) => {
+    //     this.keysDown.push(e.key.toLowerCase());
+    //     webSocket.send(this.keysDown.join(','));
+    //   });
+    //   document.addEventListener('keyup', (e) => {
+    //     this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
+    //     webSocket.send(this.keysDown.join(','));
+    //   });
+
+    //   webSocket.onmessage = (e) => {
+    //     let message: string = e.data;
+    //     if (message == 'some message title') {
+    //       console.log(message);
+    //     }
+    //   }
+    // }
+
     // Connect to remote socket for AI and multiplayer functionality
     const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
     socket.on('connection', (socket: Socket) => {
@@ -229,11 +255,11 @@ export class LiveServer implements Server {
       // keys are pressed
       document.addEventListener('keydown', (e) => {
         this.keysDown.push(e.key.toLowerCase());
-        socket.emit(this.keysDown.join(','));
+        socket.emit('example message', this.keysDown.join(','));
       });
       document.addEventListener('keyup', (e) => {
         this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
-        socket.emit(this.keysDown.join(','));
+        socket.emit('example message', this.keysDown.join(','));
       });
 
       // TODO

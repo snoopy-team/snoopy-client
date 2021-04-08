@@ -27,10 +27,12 @@ class Sprite {
   }
 
   /**
-   * Given a desired angle, returns the frame that most closely matches the angle you want.
+   * Returns the frame that most closely matches the angle you want. For instance, if you pass in 91
+   * degrees as the angle, you might get a sprite that's facing 90 degrees if there isn't a frame to
+   * better represent 91 degrees.
    * @param angle the angle of the sprite frame you want in degrees
    */
   getSpriteFrame(angle: number) {
-
+    
   }
 }
