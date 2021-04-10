@@ -8,14 +8,16 @@ canvas.height = window.innerHeight;
 
 // This is what we'll be drawing to the canvas with
 export const ctx: CanvasRenderingContext2D = canvas.getContext('2d') as CanvasRenderingContext2D;
+// flip y-axis
+ctx.transform(1, 0, 0, -1, 0, canvas.height);
 
 export const constants = {
   FPS: 30,
   // Most likely this will change to something a bit more fun (like a blue sky with clouds)
   BACKGROUND_COLOR: 'white',
   // Whether or not debugger info should be displayed
-  DEBUG_MODE: false,
-  SERVER_SOCKET_URL: 'ws://127.0.0.1:3000/'
+  DEBUG_MODE: true,
+  SERVER_SOCKET_URL: 'ws://127.0.0.1:8080/gs-guide-websocket'
 }
 
 // -------- Load assets --------

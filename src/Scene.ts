@@ -40,7 +40,7 @@ export type SceneObject = {
   private background: Background;
   private FOLLOW_DISTANCE = 50;
   // Percentage of gap between curr position & dest position to close each update. See this.update
-  private lerpFactor = 0.1;
+  private lerpFactor = 1;
   // A scale of 1 means pixels match perfectly to their on-screen size. A scale of 2 means doubling
   // the on-screen size of objects, and a scale of 0.5 means halving the size.
   protected scale: number;
@@ -106,7 +106,7 @@ export type SceneObject = {
         newPos.y = destPos.y - Math.sign(diff.y) * this.FOLLOW_DISTANCE;
       }
 
-      this.pathPosition = newPos;
+      this.pathPosition = destPos;
     }
 
     if (this.isShaking) {
@@ -287,10 +287,12 @@ export class DebugCamera extends Camera {
   displayDebugMenu(): void {
     ctx.font = "15px Arial";
     let currLineYPos = 30;
+    ctx.transform(1, 0, 0, -1, 0, canvas.height);
     for (let grabDebugMessage of this.debugLines) {
       ctx.fillText(grabDebugMessage(), 30, currLineYPos);
       currLineYPos += 30;
     }
+    ctx.transform(1, 0, 0, -1, 0, canvas.height);
   }
 
   // Toggles debug menu and debug capabilities (like arrow key movement and mousewheel zooming)

@@ -11,6 +11,7 @@
     "test": "jest --maxWorkers=1"
   },
   "dependencies": {
+    "@stomp/stompjs": "^6.1.0",
     "socket.io-client": "^4.0.0"
   }
 }

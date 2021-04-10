@@ -69,7 +69,7 @@ export class Agent implements SceneObject {
     }
 
     this.rotateThenDraw(
-      centeredPos,
+      location,
       this.orientation,
       centeredPos,
       (pos: Vec2) => this.drawSpriteImage(pos, size),

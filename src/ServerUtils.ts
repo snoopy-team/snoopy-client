@@ -2,6 +2,7 @@ import { Socket } from "socket.io-client";
 import { constants } from "./index.js";
 import { Agent, AgentState } from "./Agents";
 import { BulletState } from "./Bullet";
+import { Client, IMessage, Message } from '@stomp/stompjs';
 
 /**
  * Represents a Server which will provide the client with new state updates 
@@ -24,6 +25,45 @@ export interface Server {
 export type ServerUpdate = {
   players: Array<AgentState>,
   bullets: Array<BulletState>
+}
+
+// Wraps a raw server update to have it conform to an actual ServerUpdate. This means taking the
+// data in a raw server update and converting it into Vec2's, instead of the arrays of size 2 which
+// are given from the server.
+class RawServerUpdateWrapper {
+  players: Array<AgentState>;
+  bullets: Array<BulletState>;
+  
+  constructor(rawServerUpdate: any) {
+    console.log('raw:',rawServerUpdate);
+
+    // Translate all arrays of size 2, which represent vectors, to `Vec2`s
+    // Convert players data
+    for (let player of rawServerUpdate['players']) {
+      let acceleration = player['acceleration'];
+      player['acceleration'] = { x: acceleration[0], y: acceleration[1] };
+
+      let position = player['position'];
+      player['position'] = { x: position[0], y: position[1] };
+
+      let velocity = player['velocity'];
+      player['velocity'] = { x: velocity[0], y: velocity[1] };
+    }
+
+    // Convert bullets data
+    for (let bullet of rawServerUpdate['bullets'][0]) { // FIXME
+      console.log('should not be reaching this line');
+      let position = bullet['position'];
+      bullet['position'] = { x: position[0], y: position[1] };
+
+      let velocity = bullet['velocity'];
+      bullet['velocity'] = { x: velocity[0], y: velocity[1] };
+    }
+
+    // Set properties of this ServerUpdate
+    this.players = rawServerUpdate['players'];
+    this.bullets = [] // rawServerUpdate['bullets'];
+  }
 }
 
 /**
@@ -220,7 +260,7 @@ export class LiveServer implements Server {
   };
 
   startProvidingUpdates = (): void => {
-
+    // // Attempt 1: Raw websockets
     // let webSocket = new WebSocket(constants.SERVER_SOCKET_URL);
     // webSocket.onclose = () => console.log('socket closed');
     // webSocket.onerror = (e) => console.log('Error:', e);
@@ -246,37 +286,144 @@ export class LiveServer implements Server {
     //   }
     // }
 
-    // Connect to remote socket for AI and multiplayer functionality
-    const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
-    socket.on('connection', (socket: Socket) => {
-      console.log('Server connected successfully');
+    // // Attempt 2: Socket.io
+    // // Connect to remote socket for AI and multiplayer functionality
+    // const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
+    // socket.on('connect', () => {
+    //   let decoder = new TextDecoder("utf-8");
+    //   console.log('Server connected successfully');
 
-      // Keep track of which keys are down at any point in time and emit a message to server when
-      // keys are pressed
+    //   // Keep track of which keys are down at any point in time and emit a message to server when
+    //   // keys are pressed
+    //   document.addEventListener('keydown', (e) => {
+    //     this.keysDown.push(e.key.toLowerCase());
+    //     socket.emit('example message', this.keysDown.join(','));
+    //   });
+    //   document.addEventListener('keyup', (e) => {
+    //     this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
+    //     socket.emit('example message', this.keysDown.join(','));
+    //   });
+
+    //   socket.on('example message', (data) => {
+    //     // this is where I take `data` and broadcast an update
+    //     console.log(this.getFirstJSONUpdate(decoder.decode(data)));
+    //     // this.broadcastUpdate(JSON.parse(decoder.decode(data)));
+    //   });
+
+    //   socket.on('disconnect', () => {
+    //     console.log('Server disconnected');
+    //   });
+    // });
+
+    // // Attempt 3: Using a Maintained STOMP (protocol for websockets) library
+    // let stompClient: (StompJs.Client as Client);
+
+    // const stompConfig = {
+    //   // Typically login, passcode and vhost
+    //   // Adjust these for your broker
+    //   // connectHeaders: {
+    //   //   login: "guest",
+    //   //   passcode: "guest"
+    //   // },
+
+    //   // Broker URL, should start with ws:// or wss:// - adjust for your broker setup
+    //   // brokerURL: "ws://localhost:15674/ws",
+    //   brokerURL: constants.SERVER_SOCKET_URL,
+
+    //   // Keep it off for production, it can be quit verbose
+    //   // Skip this key to disable
+    //   debug: function (str: string) {
+    //     console.log('STOMP: ' + str);
+    //   },
+
+    //   // If disconnected, it will retry after 200ms
+    //   reconnectDelay: 200,
+
+    //   // Subscriptions should be done inside onConnect as those need to reinstated when the broker reconnects
+    //   onConnect: (frame: any) => {
+    //     // The return object has a method called `unsubscribe`
+    //     const subscription = stompClient.subscribe('/topic/chat', (message: IMessage) => {
+    //       const payload = JSON.parse(message.body);
+    //       // Do something with `payload` (object with info from server)
+    //       console.log(payload)
+    //     });
+    //   }
+    // };
+
+    // // Create an instance
+    // stompClient = new StompJs.Client(stompConfig);
+    
+    // // You can set additional configuration here
+
+    // // Attempt to connect
+    // stompClient.activate();
+
+    // // Attempt 4: Use a deprecated STOMP library :(
+    // Ignore the fact that we're using SockJS and Stomp for websockets.
+    // @ts-ignore 
+    let socket = new SockJS('/gs-guide-websocket');
+    // @ts-ignore
+    let stompClient = Stomp.over(socket);
+    stompClient.connect({}, (frame: any) => {
+      console.log('Connected: ' + frame);
+      stompClient.subscribe('/topic/greetings', (greeting: any) => {
+        // console.log(JSON.parse(greeting.body));
+        this.broadcastUpdate(new RawServerUpdateWrapper(JSON.parse(greeting.body)));
+      });
+
+      // Keep track of which keys are down at any point in time
       document.addEventListener('keydown', (e) => {
-        this.keysDown.push(e.key.toLowerCase());
-        socket.emit('example message', this.keysDown.join(','));
+        if (!this.keysDown.includes(e.key)) {
+          this.keysDown.push(e.key.toLowerCase());
+        }
       });
       document.addEventListener('keyup', (e) => {
         this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
-        socket.emit('example message', this.keysDown.join(','));
       });
 
-      // TODO
-      socket.on('some message title sent from the server', (data) => {
-        // this is where I take `data` and broadcast an update
-      });
-
-      socket.on('disconnect', () => {
-        console.log('Server disconnected');
-      });
+      // Every 30 ms, ping the server with our current keysdown because we made the design
+      // decision that the frontend should control every time the backend game loop steps forward 1
+      // time step. :(
+      setInterval(() => {
+        let out = JSON.stringify({ actions: this.keysDown });
+        stompClient.send("/app/hello", {}, out);
+      }, 30);
     });
+
   }
 
   /**
    * Provide the given update to all observers to this server
    */
-   broadcastUpdate = (update: ServerUpdate) => {
+  broadcastUpdate = (update: ServerUpdate) => {
     this.updateObservers.forEach(updateObserver => updateObserver(update));
+  }
+
+  // TODO
+  private getFirstJSONUpdate(jsonStr: string): string {
+    let i = 1;
+    let numClosingBracesNeeded = 1;
+    let firstJSONObj = "";
+
+    let currChar = jsonStr[0];
+    while (currChar != undefined) {
+      let currChar = jsonStr[i];
+      
+      if (jsonStr[i] == '{') {
+        numClosingBracesNeeded++;
+      } else if (jsonStr[i] == '}') {
+        numClosingBracesNeeded--
+      }
+
+      firstJSONObj += currChar;
+
+      if (numClosingBracesNeeded == 0) {
+        return firstJSONObj;
+      }
+      
+      i++;
+    }
+
+    return "";
   }
 }

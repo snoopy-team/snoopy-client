@@ -20,13 +20,13 @@
   </style>
 </head>
 <body>
+  <!-- Note: canvas needs to load before js should run, so don't put canvas below scripts -->
   <canvas id="game"></canvas>
 
-  <!-- canvas needs to load before js should run -->
-  <script src="./socket.io.js">
-    // Necessary in order to import io() into index.ts
-    window.io = io;
-  </script>
+  <script src="./sockjs.min.js"></script>
+  <script src="./stomp.min.js"></script>
+  <!-- <script src="/webjars/sockjs-client/sockjs.min.js"></script>
+  <script src="/webjars/stomp-websocket/stomp.min.js"></script> -->
   <script type="module" src="../build/index.js"></script>
 </body>
 </html> 
