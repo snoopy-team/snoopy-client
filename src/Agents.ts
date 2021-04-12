@@ -6,7 +6,6 @@ import { Vec2, addVectors, subractVectors, multiplyVectors } from './VectorMath.
  * Represents the properties needed to represent the current state of an agent.
  */
 export type AgentState = {
-  id: string,
   position: Vec2,
   velocity: Vec2,
   acceleration: Vec2,

@@ -13,7 +13,7 @@ import { origin, Vec2 } from './VectorMath.js';
 export class GameWorld {
   // Maps from IDs to Agents and same for Bullets
   private players: { [id: string]: Agent; };
-  private bullets: { [id: string]: Bullet };
+  private bullets: { [id: string]: Bullet[] };
   private serverUpdateManager: ServerUpdateManager;
   private isRequestingUpdates: boolean;
   // Used in gameLoop to keep track of the time that our last loop was run
@@ -39,8 +39,8 @@ export class GameWorld {
     this.millisPassedSinceLastFrame = 0;
     this.scene = [];
     this.camera = constants.DEBUG_MODE 
-      ? new DebugCamera(this.scene, new GridBackground())
-      : new Camera(() => origin, this.scene, new GridBackground());
+      ? new DebugCamera(this.getScene, new GridBackground())
+      : new Camera(() => origin, this.getScene, new GridBackground());
   }
 
   /**
@@ -68,43 +68,46 @@ export class GameWorld {
         let serverUpdate: ServerUpdate = this.serverUpdateManager.getUpdate();
 
         // Update players
-        for (let state of serverUpdate.players) {
+        for (let playerID in serverUpdate.players) {
           // Check if player is new
-          let playerIsNew = !this.players.hasOwnProperty(state.id);
+          let playerIsNew = !this.players.hasOwnProperty(playerID);
           if (playerIsNew) {
             let agent = new Agent(
-              state, 
+              serverUpdate.players[playerID], 
               (pos: Vec2, size: Vec2) => {
                 // TODO: figure out how to determine which player to draw (Snoopy vs Red Barron)
                 ctx.drawImage(imageSnoopy, pos.x, pos.y, size.x, size.y);
               },
               { x: 100, y: 150 } // Will need to change this for drawing Red Barron sprite
             );
-            this.players[state.id] = agent;
-            this.scene.push(agent);
+            this.players[playerID] = agent;
             this.camera.centerOn(agent.getPosition)
 
             if (constants.DEBUG_MODE) {
               ctx.font = "15px Arial";
-              (<DebugCamera> this.camera).addToDebugMenu(() => `Player ID: "${state.id}", Position: (${Math.round(agent.getPosition().x)}, ${Math.round(agent.getPosition().y)})`);
-              (<DebugCamera> this.camera).addToDebugMenu(() => `Press "s" to simulate camera shake.`);
+              (<DebugCamera> this.camera).addToDebugMenu(() => `Player ID: "${playerID}", Position: (${Math.round(agent.getPosition().x)}, ${Math.round(agent.getPosition().y)})`);
+              (<DebugCamera> this.camera).addToDebugMenu(() => `Press "s" to simulate camera shake.`); // TODO move this
             }
           }
 
-          this.players[state.id].getServerUpdate(state);
+          this.players[playerID].getServerUpdate(serverUpdate.players[playerID]);
         }
 
         // Update bullets
-        for (let state of serverUpdate.bullets) {
+        for (let bulletID in serverUpdate.bullets) {
+          let playerBullets = serverUpdate.bullets[bulletID];
+          
           // Check if bullet is new
-          let bulletIsNew = !this.bullets.hasOwnProperty(state.id);
-          if (bulletIsNew) {
-            let bullet = new Bullet(state.position, state.velocity);
-            this.bullets[state.id] = bullet;
-            this.scene.push(bullet);
-          }
+          let bulletIsNew = !this.bullets.hasOwnProperty(bulletID);
+          if (bulletIsNew) this.bullets[bulletID] = []
 
-          this.bullets[state.id].getServerUpdate(state);
+          // Remove existing bullets from the scene
+          this.bullets[bulletID] = [];
+          
+          for (let bullet of playerBullets) {
+            let bulletObj = new Bullet(bullet.position, bullet.velocity);
+            this.bullets[bulletID].push(bulletObj);
+          }
         }
       }
 
@@ -118,8 +121,9 @@ export class GameWorld {
       // Update bullets
       for (let bulletID of Object.keys(this.bullets)) {
         let secPerFrame = millisPerFrame / 1000;
-        let bullet = this.bullets[bulletID];
-        bullet.update(this.millisPassedSinceLastFrame / 1000);
+        for (let bullet of this.bullets[bulletID]) {
+          bullet.update(this.millisPassedSinceLastFrame / 1000);
+        }
       }
 
       // Draw all game objects
@@ -138,23 +142,22 @@ export class GameWorld {
     requestAnimationFrame(this.gameLoop);
   }
 
-  /**
-   * Registers a new player given an Agent to represent the player and an ID for the player
-   * @param player a new player in the game. Can be any type of player (i.e. AI, manual, etc.)
-   * @param id the id that we will associate the player with when we receive updates from the server
-   */
-  addPlayer = (player: Agent, id: string): void => {
-    this.players[id] = player;
-    this.scene.push(player);
-  }
+  // TODO
+  getScene = (): Array<SceneObject> => {
+    let scene = [];
 
-  /**
-   * Registers a new bullet, given an Agent and and a string ID to associate this new player with.
-   * @param bullet the bullet object
-   * @param id an ID to associate the bullet with 
-   */
-  addBullet = (bullet: Bullet, id: string): void => {
-    this.bullets[id] = bullet;
-    this.scene.push(bullet);
+    for (let player of Object.values(this.players)) {
+      scene.push(player);
+    }
+
+    for (let bulletGroup of Object.values(this.bullets)) {
+      for (let bullet of bulletGroup) {
+        scene.push(bullet);
+      }
+    }
+    console.log('this.players', this.players);
+    console.log('getScene returns', scene);
+
+    return scene;
   }
 }

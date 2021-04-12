@@ -36,7 +36,7 @@ export type SceneObject = {
   private axesRadii: Vec2;
   // This default will be changed when centerOn method is called
   private destinationPosition: () => Vec2;;
-  private scene: Array<SceneObject>;
+  private scene: () => Array<SceneObject>;
   private background: Background;
   private FOLLOW_DISTANCE = 50;
   // Percentage of gap between curr position & dest position to close each update. See this.update
@@ -59,7 +59,7 @@ export type SceneObject = {
    * For instance, you might want a Camera to focus on the (x,y) coords of an Agent. Or, you might
    * want a free Camera that moves around with your arrow keys.
    */
-  constructor(positionToCenter: () => Vec2, scene: Array<SceneObject>, background: Background, 
+  constructor(positionToCenter: () => Vec2, scene: () => Array<SceneObject>, background: Background, 
     scale: number = 1) {
     this.destinationPosition = positionToCenter;
     this.pathPosition = this.destinationPosition();
@@ -152,7 +152,8 @@ export type SceneObject = {
     this.background.draw(ctx, worldBounds.topLeft, worldBounds.bottomRight, gridSquareVec);
     
     // Draw all objects
-    for (let object of this.scene) {
+    let scene = this.scene();
+    for (let object of scene) {
       let objPos = object.getPosition();
       let scaledSize = multiplyVectors({ x: this.scale, y: this.scale }, object.getSize());
 
@@ -212,7 +213,7 @@ export class DebugCamera extends Camera {
   // Individual lines of text (separated by a new line) to show in the debug menu
   private debugLines: Array<() => string>;
 
-  constructor(scene: Array<SceneObject>, background: Background, scale: number = 1) {
+  constructor(scene: () => Array<SceneObject>, background: Background, scale: number = 1) {
     super(() => origin, scene, background, scale);
     this.debugOn = true;
     this.keysDown = [];

@@ -1,7 +1,7 @@
 import { Socket } from "socket.io-client";
 import { constants } from "./index.js";
 import { Agent, AgentState } from "./Agents";
-import { BulletState } from "./Bullet";
+import { Bullet, BulletState } from "./Bullet";
 import { Client, IMessage, Message } from '@stomp/stompjs';
 
 /**
@@ -23,23 +23,27 @@ export interface Server {
  * The information necessary for a server to broadcast an update
  */
 export type ServerUpdate = {
-  players: Array<AgentState>,
-  bullets: Array<BulletState>
+  players: { [id: string]: AgentState; },
+  bullets: {
+    [id: string]: BulletState[]
+  }
 }
 
 // Wraps a raw server update to have it conform to an actual ServerUpdate. This means taking the
 // data in a raw server update and converting it into Vec2's, instead of the arrays of size 2 which
 // are given from the server.
 class RawServerUpdateWrapper {
-  players: Array<AgentState>;
-  bullets: Array<BulletState>;
+  players: { [id: string]: AgentState; };
+  bullets: { [id: string]: BulletState[] }
   
   constructor(rawServerUpdate: any) {
     console.log('raw:',rawServerUpdate);
 
     // Translate all arrays of size 2, which represent vectors, to `Vec2`s
     // Convert players data
-    for (let player of rawServerUpdate['players']) {
+    for (let playerID in rawServerUpdate['players']) {
+      let player = rawServerUpdate['players'][playerID];
+
       let acceleration = player['acceleration'];
       player['acceleration'] = { x: acceleration[0], y: acceleration[1] };
 
@@ -51,18 +55,21 @@ class RawServerUpdateWrapper {
     }
 
     // Convert bullets data
-    for (let bullet of rawServerUpdate['bullets'][0]) { // FIXME
-      console.log('should not be reaching this line');
-      let position = bullet['position'];
-      bullet['position'] = { x: position[0], y: position[1] };
-
-      let velocity = bullet['velocity'];
-      bullet['velocity'] = { x: velocity[0], y: velocity[1] };
+    for (let bulletID in rawServerUpdate['bullets']) {
+      for (let bullet of rawServerUpdate['bullets'][bulletID]) {
+        let position = bullet['position'];
+        bullet['position'] = { x: position[0], y: position[1] };
+  
+        let velocity = bullet['velocity'];
+        bullet['velocity'] = { x: velocity[0], y: velocity[1] };
+      }
     }
 
     // Set properties of this ServerUpdate
+    console.log(rawServerUpdate['players']);
     this.players = rawServerUpdate['players'];
-    this.bullets = [] // rawServerUpdate['bullets'];
+    console.log(this.players);
+    this.bullets = rawServerUpdate['bullets'];
   }
 }
 
@@ -84,8 +91,8 @@ export class ServerUpdateManager {
     this.serverUpdateProvider = serverUpdateProvider;
     this.hasUpdateFlag = false
     this.mostRecentUpdate = {
-      players: [],
-      bullets: []
+      players: {},
+      bullets: {}
     };
   }
 
@@ -158,41 +165,40 @@ export class ServerMock implements Server {
   oneSecIntervalUpdates = (): void => {
     let mockData: Array<ServerUpdate> = [
       {
-        players: [{
-          id: 'example player id',
-          position: { x:0, y:0 },
-          velocity: { x:200, y:200 },
-          acceleration: { x: 0, y: -50 },
-          orientation: 0,
-          cooldown: 0,
-        }],
-        bullets: []
+        players: {
+          'example player id': {
+            position: { x:0, y:0 },
+            velocity: { x:200, y:200 },
+            acceleration: { x: 0, y: -50 },
+            orientation: 0,
+            cooldown: 0,
+          },
+        },
+        bullets: {}
       },
       {
-        players: [{
-          id: 'example player id',
-          position: { x:100, y:100 },
-          velocity: { x:5, y:5 },
-          acceleration: { x:0, y:0 },
-          orientation: Math.PI, // half rotation
-          cooldown: 0,
-        }],
-        bullets: []
+        players: {
+          'example player id': {
+            position: { x:100, y:100 },
+            velocity: { x:5, y:5 },
+            acceleration: { x:0, y:0 },
+            orientation: Math.PI, // half rotation
+            cooldown: 0,
+          }
+        },
+        bullets: {}
       },
       {
-        players: [{
-          id: 'example player id',
-          position: { x:100, y:50 },
-          velocity: { x:0, y:0 },
-          acceleration: { x:0, y:0 },
-          orientation: 2 * Math.PI, // full rotation
-          cooldown: 0,
-        }],
-        bullets: [{
-          id: 'example bullet id',
-          position: { x: 50, y: 50 },
-          velocity: { x: 30, y: 5 }
-        }]
+        players: {
+          'example player id': {
+            position: { x:100, y:50 },
+            velocity: { x:0, y:0 },
+            acceleration: { x:0, y:0 },
+            orientation: 2 * Math.PI, // full rotation
+            cooldown: 0,
+          }
+        },
+        bullets: {}
       },
     ];
 
@@ -208,32 +214,71 @@ export class ServerMock implements Server {
   oneSecondSineMotion = (): void => {
     let flag = true;
 
-    let sineMotion = (toggleFlag: boolean) => {
-      if (toggleFlag) {
+    let sineMotion = (toggleFlag: boolean): ServerUpdate => {
+      // if (toggleFlag) {
         return {
-          players: [{
-            id: 'example player id',
-            position: { x: 0, y: 0 },
-            velocity: { x: 300, y: 300 },
-            acceleration: { x: 0, y: 0 },
-            orientation: 0,
-            cooldown: 0,
-          }],
-          bullets: []
+          players: {
+            'example player id': {
+              position: { x: 0, y: 0 },
+              velocity: { x: 300, y: 300 },
+              acceleration: { x: 0, y: 0 },
+              orientation: 0,
+              cooldown: 0,
+            }, 
+            'example player id 2': {
+              position: { x: 0, y: 300 },
+              velocity: { x: 300, y: -300 },
+              acceleration: { x: 0, y: 0 },
+              orientation: 0,
+              cooldown: 0,
+            }
+          },
+          bullets: {
+            'example player id': [
+              {
+                position: { x: 0, y: 50 },
+                velocity: { x: 50, y: 0 },
+              },
+              // {
+              //   position: { x: 50, y: 0 },
+              //   velocity: { x: 0, y: 50 },
+              // },
+            ],
+            'example player id 2': [
+              {
+                position: { x: 0, y: 0 },
+                velocity: { x: 50, y: 100 },
+              },
+              // {
+              //   position: { x: 50, y: 50 },
+              //   velocity: { x: 0, y: -50 },
+              // },
+            ],
+          }
         }
-      } else {
-        return {
-          players: [{
-            id: 'example player id',
-            position: { x: 300, y: 300 },
-            velocity: { x: -300, y: -300 },
-            acceleration: { x: 0, y: 0 },
-            orientation: 0,
-            cooldown: 0,
-          }],
-          bullets: []
-        }
-      }
+      // } else {
+      //   return {
+      //     players: [
+      //       {
+      //         id: 'example player id',
+      //         position: { x: 300, y: 300 },
+      //         velocity: { x: -300, y: -300 },
+      //         acceleration: { x: 0, y: 0 },
+      //         orientation: 0,
+      //         cooldown: 0,
+      //       },
+      //       {
+      //         id: 'example player id 2',
+      //         position: { x: 300, y: 0 },
+      //         velocity: { x: -300, y: 300 },
+      //         acceleration: { x: 0, y: 0 },
+      //         orientation: 0,
+      //         cooldown: 0,
+      //       }
+      //     ],
+      //     bullets: []
+      //   }
+      // }
     }
 
     setInterval(() => {

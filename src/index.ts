@@ -16,7 +16,7 @@ export const constants = {
   // Most likely this will change to something a bit more fun (like a blue sky with clouds)
   BACKGROUND_COLOR: 'white',
   // Whether or not debugger info should be displayed
-  DEBUG_MODE: true,
+  DEBUG_MODE: false,
   SERVER_SOCKET_URL: 'ws://127.0.0.1:8080/gs-guide-websocket'
 }
 
@@ -25,19 +25,19 @@ export const constants = {
 let snoopyImageLoaded = false;
 export const imageSnoopy = new Image();
 imageSnoopy.onload = () => snoopyImageLoaded = true; 
-imageSnoopy.src = '../public/assets/hq/snoopy_hq.png';
+imageSnoopy.src = '../assets/hq/snoopy_hq.png';
 // -> Red Barron image
 let barronImageLoaded = false;
 export const imageBarron = new Image();
 imageBarron.onload = () => barronImageLoaded = true; 
-imageBarron.src = '../public/assets/hq/red_barron.png';
+imageBarron.src = '../assets/hq/red_barron.png';
 // -> Clouds 1-4
 export const clouds = [new Image(), new Image(), new Image(), new Image()];
 const cloudImagesLoaded = [false, false, false, false];
 for (let i = 1; i <= 4; i++) {
   let imageCloud = clouds[i - 1];
   imageCloud.onload = () => cloudImagesLoaded[i - 1] = true; 
-  imageCloud.src = '../public/assets/pixelated/clouds/cloud' + i + '.png';
+  imageCloud.src = '../assets/pixelated/clouds/cloud' + i + '.png';
 }
 
 // Start game after assets have loaded. Check if they've loaded every `checkLoadedFreq` milliseconds

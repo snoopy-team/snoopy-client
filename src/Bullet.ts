@@ -6,7 +6,6 @@ import { SceneObject } from "./Scene.js";
  * Holds the state information for a bullet but not behavior
  */
 export type BulletState = {
-  id: string,
   position: Vec2,
   velocity: Vec2
 }
