@@ -106,6 +106,8 @@ export class GameWorld {
               keyboardLayout = doNothingKeyboardLayout;
             }
             ioManager.addIOPair(camera, keyboardLayout);
+            // @ts-ignore
+            ioManager.cycle();
           }
 
           this.players[playerID].getServerUpdate(serverUpdate.players[playerID]);
