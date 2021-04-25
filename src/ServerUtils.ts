@@ -1,8 +1,5 @@
-import { Socket } from "socket.io-client";
-import { constants } from "./index.js";
-import { Agent, AgentState } from "./Agents";
-import { Bullet, BulletState } from "./Bullet";
-import { Client, IMessage, Message } from '@stomp/stompjs';
+import { AgentState } from "./Agents";
+import { BulletState } from "./Bullet";
 
 /**
  * Represents a Server which will provide the client with new state updates 
@@ -16,14 +13,19 @@ export interface Server {
    /**
     * Begin grabbing updates from our information source (local or some remote server)
     */
-   startProvidingUpdates: VoidFunction
+   startProvidingUpdates: VoidFunction,
+
+   /**
+    * Send a message to the endpoint where we're listening to.
+    */
+   sendMessage: (msg: string) => void
 }
 
 /**
  * The information necessary for a server to broadcast an update
  */
 export type ServerUpdate = {
-  players: { [id: string]: AgentState; },
+  players: { [id: number]: AgentState; },
   bullets: {
     [id: string]: BulletState[]
   }
@@ -37,7 +39,7 @@ class RawServerUpdateWrapper {
   bullets: { [id: string]: BulletState[] }
   
   constructor(rawServerUpdate: any) {
-    console.log('raw:',rawServerUpdate);
+    // console.log('raw:',rawServerUpdate);
 
     // Translate all arrays of size 2, which represent vectors, to `Vec2`s
     // Convert players data
@@ -66,9 +68,7 @@ class RawServerUpdateWrapper {
     }
 
     // Set properties of this ServerUpdate
-    console.log(rawServerUpdate['players']);
     this.players = rawServerUpdate['players'];
-    console.log(this.players);
     this.bullets = rawServerUpdate['bullets'];
   }
 }
@@ -125,6 +125,13 @@ export class ServerUpdateManager {
     this.serverUpdateProvider.addUpdateListener(this.acceptUpdate);
     this.serverUpdateProvider.startProvidingUpdates();
   }
+
+  /**
+   * Sends a message to the endpoint that we're interacting with.
+   */
+  sendMessage = (msg: string) => {
+    this.serverUpdateProvider.sendMessage(msg);
+  }
 }
 
 /**
@@ -136,6 +143,13 @@ export class ServerMock implements Server {
 
   constructor() {
     this.updateObservers = [];
+  }
+
+  /**
+   * Does nothing because a ServerMock doesn't actually conncet to a Server.
+   */
+  sendMessage(msg: string) {
+    // do nothing
   }
 
   /**
@@ -166,7 +180,7 @@ export class ServerMock implements Server {
     let mockData: Array<ServerUpdate> = [
       {
         players: {
-          'example player id': {
+          0: {
             position: { x:0, y:0 },
             velocity: { x:200, y:200 },
             acceleration: { x: 0, y: -50 },
@@ -178,7 +192,7 @@ export class ServerMock implements Server {
       },
       {
         players: {
-          'example player id': {
+          0: {
             position: { x:100, y:100 },
             velocity: { x:5, y:5 },
             acceleration: { x:0, y:0 },
@@ -190,7 +204,7 @@ export class ServerMock implements Server {
       },
       {
         players: {
-          'example player id': {
+          0: {
             position: { x:100, y:50 },
             velocity: { x:0, y:0 },
             acceleration: { x:0, y:0 },
@@ -218,14 +232,14 @@ export class ServerMock implements Server {
       // if (toggleFlag) {
         return {
           players: {
-            'example player id': {
+            0: {
               position: { x: 0, y: 0 },
               velocity: { x: 300, y: 300 },
               acceleration: { x: 0, y: 0 },
               orientation: 0,
               cooldown: 0,
             }, 
-            'example player id 2': {
+            1: {
               position: { x: 0, y: 300 },
               velocity: { x: 300, y: -300 },
               acceleration: { x: 0, y: 0 },
@@ -234,7 +248,7 @@ export class ServerMock implements Server {
             }
           },
           bullets: {
-            'example player id': [
+            0: [
               {
                 position: { x: 0, y: 50 },
                 velocity: { x: 50, y: 0 },
@@ -244,7 +258,7 @@ export class ServerMock implements Server {
               //   velocity: { x: 0, y: 50 },
               // },
             ],
-            'example player id 2': [
+            1: [
               {
                 position: { x: 0, y: 0 },
                 velocity: { x: 50, y: 100 },
@@ -293,11 +307,22 @@ export class ServerMock implements Server {
  */
 export class LiveServer implements Server {
   private updateObservers: Array<(update: ServerUpdate) => void>;
-  private keysDown: Array<string>;
+  private stompClient: any;
+  private currentMessage: string;
 
   constructor() {
     this.updateObservers = [];
-    this.keysDown = [];
+    // Ignore the fact that we're using client libraries (as opposed to NPM) for SockJS and Stomp to
+    // websockets.
+    // @ts-ignore 
+    let socket = new SockJS('/gs-guide-websocket');
+    // @ts-ignore
+    this.stompClient = Stomp.over(socket);
+    this.currentMessage = JSON.stringify({ actions: [] });
+  }
+
+  sendMessage(msg: string): void {
+    this.currentMessage = msg;
   }
 
   addUpdateListener = (listener: (update: ServerUpdate) => void): void => {
@@ -305,133 +330,20 @@ export class LiveServer implements Server {
   };
 
   startProvidingUpdates = (): void => {
-    // // Attempt 1: Raw websockets
-    // let webSocket = new WebSocket(constants.SERVER_SOCKET_URL);
-    // webSocket.onclose = () => console.log('socket closed');
-    // webSocket.onerror = (e) => console.log('Error:', e);
-    // webSocket.onopen = () => {
-    //   console.log('Server connected successfully');
-
-    //   // Keep track of which keys are down at any point in time and emit a message to server when
-    //   // keys are pressed
-    //   document.addEventListener('keydown', (e) => {
-    //     this.keysDown.push(e.key.toLowerCase());
-    //     webSocket.send(this.keysDown.join(','));
-    //   });
-    //   document.addEventListener('keyup', (e) => {
-    //     this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
-    //     webSocket.send(this.keysDown.join(','));
-    //   });
-
-    //   webSocket.onmessage = (e) => {
-    //     let message: string = e.data;
-    //     if (message == 'some message title') {
-    //       console.log(message);
-    //     }
-    //   }
-    // }
-
-    // // Attempt 2: Socket.io
-    // // Connect to remote socket for AI and multiplayer functionality
-    // const socket = (window as any).io(constants.SERVER_SOCKET_URL) as Socket;
-    // socket.on('connect', () => {
-    //   let decoder = new TextDecoder("utf-8");
-    //   console.log('Server connected successfully');
-
-    //   // Keep track of which keys are down at any point in time and emit a message to server when
-    //   // keys are pressed
-    //   document.addEventListener('keydown', (e) => {
-    //     this.keysDown.push(e.key.toLowerCase());
-    //     socket.emit('example message', this.keysDown.join(','));
-    //   });
-    //   document.addEventListener('keyup', (e) => {
-    //     this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
-    //     socket.emit('example message', this.keysDown.join(','));
-    //   });
-
-    //   socket.on('example message', (data) => {
-    //     // this is where I take `data` and broadcast an update
-    //     console.log(this.getFirstJSONUpdate(decoder.decode(data)));
-    //     // this.broadcastUpdate(JSON.parse(decoder.decode(data)));
-    //   });
-
-    //   socket.on('disconnect', () => {
-    //     console.log('Server disconnected');
-    //   });
-    // });
-
-    // // Attempt 3: Using a Maintained STOMP (protocol for websockets) library
-    // let stompClient: (StompJs.Client as Client);
-
-    // const stompConfig = {
-    //   // Typically login, passcode and vhost
-    //   // Adjust these for your broker
-    //   // connectHeaders: {
-    //   //   login: "guest",
-    //   //   passcode: "guest"
-    //   // },
-
-    //   // Broker URL, should start with ws:// or wss:// - adjust for your broker setup
-    //   // brokerURL: "ws://localhost:15674/ws",
-    //   brokerURL: constants.SERVER_SOCKET_URL,
-
-    //   // Keep it off for production, it can be quit verbose
-    //   // Skip this key to disable
-    //   debug: function (str: string) {
-    //     console.log('STOMP: ' + str);
-    //   },
-
-    //   // If disconnected, it will retry after 200ms
-    //   reconnectDelay: 200,
-
-    //   // Subscriptions should be done inside onConnect as those need to reinstated when the broker reconnects
-    //   onConnect: (frame: any) => {
-    //     // The return object has a method called `unsubscribe`
-    //     const subscription = stompClient.subscribe('/topic/chat', (message: IMessage) => {
-    //       const payload = JSON.parse(message.body);
-    //       // Do something with `payload` (object with info from server)
-    //       console.log(payload)
-    //     });
-    //   }
-    // };
-
-    // // Create an instance
-    // stompClient = new StompJs.Client(stompConfig);
-    
-    // // You can set additional configuration here
-
-    // // Attempt to connect
-    // stompClient.activate();
-
-    // // Attempt 4: Use a deprecated STOMP library :(
-    // Ignore the fact that we're using SockJS and Stomp for websockets.
-    // @ts-ignore 
-    let socket = new SockJS('/gs-guide-websocket');
-    // @ts-ignore
-    let stompClient = Stomp.over(socket);
-    stompClient.connect({}, (frame: any) => {
+    // this.stompClient.debug = null
+    this.stompClient.connect({}, (frame: any) => {
       console.log('Connected: ' + frame);
-      stompClient.subscribe('/topic/greetings', (greeting: any) => {
+      this.stompClient.subscribe('/game/to-client', (greeting: any) => {
         // console.log(JSON.parse(greeting.body));
         this.broadcastUpdate(new RawServerUpdateWrapper(JSON.parse(greeting.body)));
       });
 
-      // Keep track of which keys are down at any point in time
-      document.addEventListener('keydown', (e) => {
-        if (!this.keysDown.includes(e.key)) {
-          this.keysDown.push(e.key.toLowerCase());
-        }
-      });
-      document.addEventListener('keyup', (e) => {
-        this.keysDown = this.keysDown.filter((key) => key != e.key.toLowerCase());
-      });
-
       // Every 30 ms, ping the server with our current keysdown because we made the design
       // decision that the frontend should control every time the backend game loop steps forward 1
-      // time step. :(
+      // time step.
       setInterval(() => {
-        let out = JSON.stringify({ actions: this.keysDown });
-        stompClient.send("/app/hello", {}, out);
+        let out = this.currentMessage;
+        this.stompClient.send("/app/to-server", {}, out);
       }, 30);
     });
 
@@ -442,33 +354,5 @@ export class LiveServer implements Server {
    */
   broadcastUpdate = (update: ServerUpdate) => {
     this.updateObservers.forEach(updateObserver => updateObserver(update));
-  }
-
-  // TODO
-  private getFirstJSONUpdate(jsonStr: string): string {
-    let i = 1;
-    let numClosingBracesNeeded = 1;
-    let firstJSONObj = "";
-
-    let currChar = jsonStr[0];
-    while (currChar != undefined) {
-      let currChar = jsonStr[i];
-      
-      if (jsonStr[i] == '{') {
-        numClosingBracesNeeded++;
-      } else if (jsonStr[i] == '}') {
-        numClosingBracesNeeded--
-      }
-
-      firstJSONObj += currChar;
-
-      if (numClosingBracesNeeded == 0) {
-        return firstJSONObj;
-      }
-      
-      i++;
-    }
-
-    return "";
   }
 }

@@ -1,10 +1,11 @@
-import { canvas, ctx, constants, imageSnoopy } from './index.js';
+import { canvas, ctx, constants, imageSnoopy, ioManager } from './index.js';
 import { Agent, AgentState } from './Agents.js';
 import { Bullet } from './Bullet.js';
 import { Server, ServerMock, ServerUpdate, ServerUpdateManager } from './ServerUtils.js';
 import { Camera, DebugCamera, SceneObject } from './Scene.js';
-import { GridBackground } from './GridBackground.js';
+import { GridBackground, WorldBorderBackground, WorldBorderWithGrid } from './GridBackground.js';
 import { origin, Vec2 } from './VectorMath.js';
+import { doNothingKeyboardLayout, KeyboardLayout } from './KeyboardManager.js';
 
 /**
  * Holds the main game loop for this dogfighting game. Holds the state and behavior necessary to
@@ -21,7 +22,6 @@ export class GameWorld {
   private millisPassedSinceLastFrame: number;
   // Provides our Camera with objects to draw
   private scene: Array<SceneObject>;
-  private camera: Camera;
 
   /**
    * Constructs a GameWorld from information that is available via a server update packet.
@@ -38,9 +38,14 @@ export class GameWorld {
     this.before = Date.now();
     this.millisPassedSinceLastFrame = 0;
     this.scene = [];
-    this.camera = constants.DEBUG_MODE 
-      ? new DebugCamera(this.getScene, new GridBackground())
-      : new Camera(() => origin, this.getScene, new GridBackground());
+
+    const debugCamera = new DebugCamera(() => origin, this.getScene, 
+      new WorldBorderWithGrid(constants.TOP_LEFT_WORLD_BOUND, constants.BOTTOM_RIGHT_WORLD_BOUND));
+    // Add a debug view to our game
+    ioManager.addIOPair(
+      debugCamera, 
+      debugCamera.getKeyboardLayout()
+    )
   }
 
   /**
@@ -81,13 +86,19 @@ export class GameWorld {
               { x: 100, y: 150 } // Will need to change this for drawing Red Barron sprite
             );
             this.players[playerID] = agent;
-            this.camera.centerOn(agent.getPosition)
+            
+            let camera = new Camera(agent.getPosition, this.getScene, 
+              new WorldBorderWithGrid(constants.TOP_LEFT_WORLD_BOUND, constants.BOTTOM_RIGHT_WORLD_BOUND));
+            let keyboardLayout: KeyboardLayout;
 
-            if (constants.DEBUG_MODE) {
-              ctx.font = "15px Arial";
-              (<DebugCamera> this.camera).addToDebugMenu(() => `Player ID: "${playerID}", Position: (${Math.round(agent.getPosition().x)}, ${Math.round(agent.getPosition().y)})`);
-              (<DebugCamera> this.camera).addToDebugMenu(() => `Press "s" to simulate camera shake.`); // TODO move this
+            // @ts-ignore because playerID is a number, but TS thinks its a string because it's
+            // coming from a key on an object.
+            if (playerID == constants.PLAYER_IDX) {
+              keyboardLayout = this.serverOutputKeyboardLayout();
+            } else {
+              keyboardLayout = doNothingKeyboardLayout;
             }
+            ioManager.addIOPair(camera, keyboardLayout);
           }
 
           this.players[playerID].getServerUpdate(serverUpdate.players[playerID]);
@@ -126,14 +137,9 @@ export class GameWorld {
         }
       }
 
-      // Draw all game objects
-      this.camera.update(this.millisPassedSinceLastFrame / 1000);
-      this.camera.renderAll();
-
-      // Add debug info to the top left
-      if (constants.DEBUG_MODE) {
-        (<DebugCamera> this.camera).displayDebugMenu();
-      }
+      // Update the io manager so it can update the outputs
+      ioManager.update(this.millisPassedSinceLastFrame / 1000);
+      ioManager.renderOutput();
 
       this.millisPassedSinceLastFrame = 0;
     }
@@ -155,9 +161,23 @@ export class GameWorld {
         scene.push(bullet);
       }
     }
-    console.log('this.players', this.players);
-    console.log('getScene returns', scene);
 
     return scene;
+  }
+
+  // TODO
+  serverOutputKeyboardLayout() {
+      // Set up keyboard controls
+      const onKeydown = (e: KeyboardEvent) => {
+        this.serverUpdateManager.sendMessage(JSON.stringify({ actions: ioManager.getKeysDown()}));
+      }
+      const onKeyup = (e: KeyboardEvent) => {
+        this.serverUpdateManager.sendMessage(JSON.stringify({ actions: ioManager.getKeysDown()}));
+      }
+      const onScroll = () => { /* Do nothing */ }
+      const keyboardConfig = { onKeydown, onKeyup, onScroll }
+      
+      // Keep track of which keys are down at any point in time
+      return keyboardConfig;
   }
 }

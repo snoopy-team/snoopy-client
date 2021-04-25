@@ -14,7 +14,8 @@
     // "declarationMap": true,                      /* Generates a sourcemap for each corresponding '.d.ts' file. */
     "sourceMap": true,                           /* Generates corresponding '.map' file. */
     // "outFile": "./",                             /* Concatenate and emit output to single file. */
-    "outDir": "./build",                              /* Redirect output structure to the directory. */
+    // "outDir": "./build",                              /* Redirect output structure to the local directory. */
+    "outDir": "/Users/garrettsmith/Documents/Artificial Intelligence/snoopy-server/src/main/resources/static/build",                              /* Redirect output structure to the backend build directory. */
     "rootDir": "./src",                             /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
     // "composite": true,                           /* Enable project compilation */
     // "tsBuildInfoFile": "./",                     /* Specify file to store incremental compilation information */

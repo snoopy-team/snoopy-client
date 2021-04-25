@@ -1,5 +1,6 @@
 import { Background } from './GridBackground.js';
 import { canvas, ctx } from './index.js';
+import { KeyboardLayout } from './KeyboardManager.js';
 import { addVectors, multiplyVectors, origin, randInt, subractVectors, Vec2 } from './VectorMath.js';
 
 // Represents an object that can be viewed with a Camera. It must include methods that provide
@@ -52,6 +53,10 @@ export type SceneObject = {
   // path position by using a formula similar to `f(x) = sin(50x) / x` where x represents time since
   // the shake started.
   protected augmentedPosition: Vec2;
+  // The subjects that this camera can follow. Useful for cycling through subjects to focus on (i.e.
+  // looking at the AI, player, etc.)
+  private subjects: Array<() => Vec2>;
+  private subjectID: number;
 
   /**
    * Constructs a new Camera, given information about what to follow
@@ -70,6 +75,8 @@ export type SceneObject = {
     this.axesRadii = {x: this.scale * (canvas.width / 2), y: this.scale * (canvas.height / 2)};
     this.shakeTimeElapsed = 0;
     this.isShaking = false;
+    this.subjects = [positionToCenter];
+    this.subjectID = 0;
   }
 
   /**
@@ -80,6 +87,25 @@ export type SceneObject = {
    */
   centerOn = (positionToCenter: () => Vec2) => {
     this.destinationPosition = positionToCenter;
+    this.subjects.push(positionToCenter);
+  }
+
+  // TODO
+  centerOnBounds(topLeft: Vec2, bottomRight: Vec2): void {
+    // Calculate center of the given bounds
+    let centerOfBounds = multiplyVectors(addVectors(topLeft, bottomRight), {x: .5, y: .5});
+    this.destinationPosition = () => centerOfBounds;
+    
+    // Recalculate scale so that the bounds
+    
+  }
+
+  /**
+   * Cycles what this camera is focused on by cycling through this.subjects 
+   */
+  cycleFollow(): void {
+    this.subjectID += 1;
+    this.destinationPosition = this.subjects[this.subjectID];
   }
 
   /**
@@ -147,9 +173,12 @@ export type SceneObject = {
   renderAll = (): void => {
     // Draw background
     let worldBounds = this.computeWorldBounds();
-    let gridSquareSize = 100;
-    let gridSquareVec = { x: this.scale * gridSquareSize, y: this.scale * gridSquareSize };
-    this.background.draw(ctx, worldBounds.topLeft, worldBounds.bottomRight, gridSquareVec);
+    this.background.draw(ctx, worldBounds.topLeft, worldBounds.bottomRight, this.scale, (coord: Vec2) => {
+      return {
+        x: canvas.width / 2 + this.scale * (coord.x - this.augmentedPosition.x),
+        y: canvas.height / 2 + this.scale * (coord.y - this.augmentedPosition.y),
+      }
+    });
     
     // Draw all objects
     let scene = this.scene();
@@ -208,46 +237,19 @@ export type SceneObject = {
 export class DebugCamera extends Camera {
   // Holds values from an event.key from a vanilla keyboard event listener
   private keysDown: Array<string>;
-  // Whether debug mode is on or not
+  // Whether debug mode is on or not. If it's off, this camera acts like a normal Camera.
   private debugOn: boolean;
   // Individual lines of text (separated by a new line) to show in the debug menu
   private debugLines: Array<() => string>;
 
-  constructor(scene: () => Array<SceneObject>, background: Background, scale: number = 1) {
-    super(() => origin, scene, background, scale);
+  constructor(centerOn: () => Vec2, scene: () => Array<SceneObject>, background: Background, scale: number = 1) {
+    super(centerOn, scene, background, scale);
     this.debugOn = true;
     this.keysDown = [];
     this.debugLines = [];
     this.debugLines.push(() => `Camera Mode: ${ this.debugOn ? 'Debug Camera' : 'Player Camera' }`);
     this.debugLines.push(() => `Spacebar to toggle camera mode`);
     this.debugLines.push(() => `Scroll to zoom, arrow keys to pan camera in debug mode`);
-
-    document.addEventListener('keydown', (e: KeyboardEvent) => {
-      this.keysDown.push(e.key);
-
-      // Toggle Camera type on space
-      if (e.key == ' ') {
-        this.toggleDebugFeatures();
-      }
-
-      // Simulate shaek
-      if (e.key == 's') {
-        this.shake(0);
-      }
-    });
-
-    document.addEventListener('keyup', (e: KeyboardEvent) => {
-      this.keysDown = this.keysDown.filter((key: string) => key != e.key);
-    });
-
-    // On scroll, update zoom
-    document.addEventListener('wheel', (e: WheelEvent) => {
-      e.preventDefault();
-      this.scale += e.deltaY * -0.01;
-
-      // Restrict scale from [.125, 3]
-      this.scale = Math.min(Math.max(.125, this.scale), 3);
-    }, { passive: false });
   }
 
   update = (deltaTime: number): void => {
@@ -257,9 +259,9 @@ export class DebugCamera extends Camera {
 
       // Update position from keyboard inputs
       if (this.keysDown.includes('ArrowUp')) {
-        this.augmentedPosition = addVectors({ x: 0, y: -vel }, this.augmentedPosition);
-      } else if (this.keysDown.includes('ArrowDown')) {
         this.augmentedPosition = addVectors({ x: 0, y: vel }, this.augmentedPosition);
+      } else if (this.keysDown.includes('ArrowDown')) {
+        this.augmentedPosition = addVectors({ x: 0, y: -vel }, this.augmentedPosition);
       }
 
       if (this.keysDown.includes('ArrowRight')) {
@@ -294,6 +296,38 @@ export class DebugCamera extends Camera {
       currLineYPos += 30;
     }
     ctx.transform(1, 0, 0, -1, 0, canvas.height);
+  }
+
+  getKeyboardLayout(): KeyboardLayout {
+    const onKeydown = (e: KeyboardEvent) => {
+      this.keysDown.push(e.key);
+
+      // Cycle which subject to follow 
+      if (e.key == 'c') {
+        this.cycleFollow(); 
+      }
+
+      // Simulate shaek
+      if (e.key == 's') {
+        this.shake(0);
+      }
+    }
+
+    const onKeyup = (e: KeyboardEvent) => {
+      this.keysDown = this.keysDown.filter((key: string) => key != e.key);
+    }
+
+    // On scroll, update zoom
+    const onScroll = (e: WheelEvent) => {
+      e.preventDefault();
+      this.scale += e.deltaY * -0.01;
+
+      // Restrict scale from [.125, 3]
+      this.scale = Math.min(Math.max(.125, this.scale), 3);
+    }
+    const layout = { onKeydown, onKeyup, onScroll };
+
+    return layout;
   }
 
   // Toggles debug menu and debug capabilities (like arrow key movement and mousewheel zooming)
