@@ -109,7 +109,7 @@ export class GridBackground implements Background {
   private gridSquareDimensions: Vec2;
 
   constructor() {
-    this.gridSquareDimensions = { x: 100, y: 100. };
+    this.gridSquareDimensions = { x: 300, y: 300 };
   }
 
   /**
@@ -163,8 +163,3 @@ export class GridBackground implements Background {
     ctx.textAlign = defaultTextAlign;
   }
 }
-
-// TODO: draw circles with text inside of them. The text is the coordinate of the center of the
-// circle. We want to draw a circle at every multiple of dimension (i.e. (100, 100), (200, 200))
-// within the viewing space. We can use the worldToScreen function to accurately get these
-// positions, so it actually shouldn't be very difficult.

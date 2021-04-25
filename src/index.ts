@@ -22,8 +22,10 @@ export const constants = {
   SERVER_SOCKET_URL: 'ws://127.0.0.1:8080/gs-guide-websocket',
   AI_IDX: 0,
   PLAYER_IDX: 1,
-  TOP_LEFT_WORLD_BOUND: { x: -45, y: 0 }, // x should be = to Snoopy's width
-  BOTTOM_RIGHT_WORLD_BOUND: { x: 1000, y: 1000 }
+  SNOOPY_SIZE: { x: 30, y: 50 },
+  BARRON_SIZE: { x: 30, y: 20 },
+  TOP_LEFT_WORLD_BOUND: { x: -30, y: 0 }, // x should be = to negative Snoopy's width
+  BOTTOM_RIGHT_WORLD_BOUND: { x: 1000, y: 1000 },
 }
 
 // Initialize an IO manager to keep track of which inputs correspond with which outputs

@@ -1,4 +1,4 @@
-import { canvas, ctx, constants, imageSnoopy, ioManager } from './index.js';
+import { canvas, ctx, constants, imageSnoopy, ioManager, imageBarron } from './index.js';
 import { Agent, AgentState } from './Agents.js';
 import { Bullet } from './Bullet.js';
 import { Server, ServerMock, ServerUpdate, ServerUpdateManager } from './ServerUtils.js';
@@ -80,10 +80,17 @@ export class GameWorld {
             let agent = new Agent(
               serverUpdate.players[playerID], 
               (pos: Vec2, size: Vec2) => {
-                // TODO: figure out how to determine which player to draw (Snoopy vs Red Barron)
-                ctx.drawImage(imageSnoopy, pos.x, pos.y, size.x, size.y);
+                ctx.drawImage(
+                  // @ts-ignore
+                  playerID == constants.PLAYER_IDX ? imageSnoopy : imageBarron, 
+                  pos.x, 
+                  pos.y, 
+                  size.x, 
+                  size.y
+                );
               },
-              { x: 100, y: 150 } // Will need to change this for drawing Red Barron sprite
+              // @ts-ignore
+              playerID == constants.PLAYER_IDX ? constants.SNOOPY_SIZE : constants.BARRON_SIZE
             );
             this.players[playerID] = agent;
             
