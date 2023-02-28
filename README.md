@@ -1,4 +1,6 @@
 # Snoopy Game / 2D Game Engine
+https://snoopy-team.github.io/public/
+
 ## The Story
 I was working with 2 friends on a final project for my Artificial Intelligence class - our idea was to build an AI powered Snoopy game (from Charlie Brown). I took the responsibility to make the game's front-end but hadn't used any game engines, so I set out to do everything from scratch. What resulted after 2 weeks was a basic 2D game engine. See the clips below!
 
